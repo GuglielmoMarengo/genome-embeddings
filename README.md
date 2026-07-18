@@ -1,9 +1,9 @@
 # Genome Embeddings
 
-[![Python](https://img.shields.io/badge/Python-3-blue)](https://www.python.org/)
-[![License](https://img.shields.io/github/license/GuglielmoMarengo/genome-embeddings)](LICENSE)
-[![Last Commit](https://img.shields.io/github/last-commit/GuglielmoMarengo/genome-embeddings)](https://github.com/GuglielmoMarengo/genome-embeddings/commits/main)
-[![Status](https://img.shields.io/badge/Status-In%20Development-orange)](https://github.com/GuglielmoMarengo/genome-embeddings)
+[Python](https://www.python.org/)
+[License](LICENSE)
+[Last Commit](https://github.com/GuglielmoMarengo/genome-embeddings/commits/main)
+[Status](https://github.com/GuglielmoMarengo/genome-embeddings)
 
 **Turning genomes into mathematics.**
 
@@ -13,8 +13,6 @@ Rather than relying solely on machine learning, the project explores representat
 
 ---
 
-
-
 ## Vision
 
 Rather than relying exclusively on machine learning models, this project investigates mathematical descriptors derived from information theory, number theory, graph theory and statistics.
@@ -22,8 +20,6 @@ Rather than relying exclusively on machine learning models, this project investi
 The long-term goal is to build interpretable genome embeddings that can support downstream bioinformatics, computational biology and AI applications.
 
 ---
-
-
 
 ## Roadmap
 
@@ -41,8 +37,6 @@ The long-term goal is to build interpretable genome embeddings that can support 
 
 ---
 
-
-
 ## Genome Validation Rules
 
 
@@ -58,8 +52,6 @@ The long-term goal is to build interpretable genome embeddings that can support 
 
 ---
 
-
-
 ## Installation
 
 ```bash
@@ -70,8 +62,6 @@ pip install -r requirements.txt
 
 ---
 
-
-
 ## Running the tests
 
 ```bash
@@ -80,25 +70,25 @@ pytest
 
 ---
 
-
-
 ## Project Structure
 
 ```text
 genome-embeddings/
+├── data/
+│   └── gfp.fasta
 ├── src/
 │   └── genome.py
 ├── tests/
-│   ├── test_genome.py
-│   └── conftest.py
+│   ├── data/
+│   │   └── example.fasta
+│   └── test_genome.py
+├── main.py
 ├── README.md
 ├── requirements.txt
 └── LICENSE
 ```
 
 ---
-
-
 
 ## Why this project?
 
@@ -108,7 +98,17 @@ Genome Embeddings explores an alternative direction: representing genomes throug
 
 ---
 
+## Example dataset
 
+**gfp.fasta**
+
+- Organism: *Aequorea victoria*
+
+- Gene: Green Fluorescent Protein (GFP)
+
+- Source: NCBI GenBank L29345.1
+
+---
 
 ## License
 
