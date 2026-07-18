@@ -3,35 +3,19 @@ from src.genome import Genome
 
 @pytest.fixture
 def genome():
-    return Genome (
-        organism = "Human",
-        chromosome = "1",
-        sequence = "ACGTACGT"
-    )
+    return Genome (sequence="ACGTACGT")
 
 @pytest.fixture
 def aagc_genome():
-    return Genome (        
-        organism = "Human",
-        chromosome = "1",
-        sequence = "AAGC"
-    )
+    return Genome (sequence="AAGC")
 
 @pytest.fixture
 def all_a_genome():
-    return Genome (        
-        organism = "Human",
-        chromosome = "1",
-        sequence = "AAAAAAAA"
-    )
+    return Genome (sequence="AAAAAAAA")
 
 @pytest.fixture
 def all_gc_genome():
-    return Genome (        
-        organism = "Human",
-        chromosome = "1",
-        sequence = "GCCGGGCC"
-    )
+    return Genome (sequence="GCCGGGCC")
 
 def test_length(genome):
     assert genome.length() == 8
@@ -50,16 +34,13 @@ def test_gc_content_all_gc(all_gc_genome):
 
 def test_value_error():
     with pytest.raises(ValueError, match="Invalid character X in sequence at position 4."):
-        Genome(
-            organism = "Human",
-            chromosome = "1",
-            sequence = "ACGX"
-        )
+        Genome(sequence="ACGX")
 
 def test_empty_sequence_raises_value_error():
     with pytest.raises(ValueError, match="Sequence cannot be empty."):
-        Genome(
-            organism="Human",
-            chromosome="1",
-            sequence=""
-        )
+        Genome(sequence="")
+
+def test_from_fasta_reads_sequence():
+    genome = Genome.from_fasta("tests/data/example.fasta")
+    assert genome.sequence == "ACGTTGCA"
+    assert genome.header == ">Example sequence"

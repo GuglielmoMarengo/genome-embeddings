@@ -1,7 +1,5 @@
 class Genome:
-    def __init__(self, organism, chromosome , sequence):
-        self.validate_string("Organism", organism)
-        self.validate_string("Chromosome", chromosome)
+    def __init__(self, sequence, header=None):
         self.validate_string("Sequence", sequence)
 
         sequence = sequence.upper()
@@ -12,8 +10,24 @@ class Genome:
                 raise ValueError(f"Invalid character {character} in sequence at position {i}.")
 
         self.sequence = sequence
-        self.organism = organism
-        self.chromosome = chromosome
+        self.header = header
+
+    @classmethod
+    def from_fasta(cls, filepath):
+        with open(filepath) as file:
+            lines = file.readlines()
+
+            if not lines:
+                raise ValueError("FASTA file is empty.")
+
+            header = lines[0].strip()
+            if not header.startswith(">"):
+                raise ValueError("FASTA header must start with '>'.")
+
+            sequence_lines = lines[1:]
+            sequence = "".join(line.strip() for line in sequence_lines)
+
+            return cls(sequence=sequence, header=header)
 
     @staticmethod
     def validate_string(name, value):

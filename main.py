@@ -1,14 +1,9 @@
 from src.genome import Genome
 
-human = Genome(
-    organism="Human",
-    chromosome="1",
-    sequence="ACGTACGT"
-)
+genome = Genome.from_fasta("data/example.fasta")
 
-print(f"Organism: {human.organism}")
-print(f"Chromosome: {human.chromosome}")
-print(f"Sequence: {human.sequence}")
-print(f"Length: {human.length()}")
-print(f"GC Content: {human.gc_content()*100:.2f}%")
-print(f"Reverse Complement: {human.reverse_complement()}")
+print(f"Header: {genome.header}")
+print(f"Sequence: {genome.sequence}")
+print(f"Length: {genome.length()}")
+print(f"GC Content: {genome.gc_content()*100:.2f}%")
+print(f"Reverse Complement: {genome.reverse_complement()}")
