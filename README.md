@@ -1,35 +1,92 @@
 # Genome Embeddings
 
-Genome Embeddings is an open-source project that explores mathematical representations of genomic sequences.
+**Turning genomes into mathematics.**
+
+Genome Embeddings is an open-source Python project for representing genomic sequences through mathematical descriptors. Rather than relying solely on machine learning, the project explores representations inspired by information theory, number theory, graph theory and statistics.
+
+---
 
 ## Vision
 
-Instead of representing DNA using machine learning models, this project investigates mathematical descriptors derived from information theory, number theory, graph theory and statistics.
+Rather than relying exclusively on machine learning models, this project investigates mathematical descriptors derived from information theory, number theory, graph theory and statistics.
+
+The long-term goal is to build interpretable genome embeddings that can support downstream bioinformatics, computational biology and AI applications.
+
+---
 
 ## Roadmap
 
-- [ ] Sequence statistics
+- [x] Genome representation  
+- [x] Sequence validation  
+- [x] GC content  
+- [x] Reverse complement  
+- [ ] Shannon entropy  
+- [ ] k-mer frequencies  
+- [ ] Genome embeddings  
+- [ ] Genome similarity metrics  
+- [ ] FASTA parser  
+- [ ] Visualization tools  
+- [ ] Embedding export
 
-- [ ] GC Content
-
-- [ ] Shannon Entropy
-
-- [ ] k-mer frequencies
-
-- [ ] Genome embeddings
-
-- [ ] Genome comparison
+---
 
 ## Genome Validation Rules
 
-The `Genome` class validates all input data before creating a valid genome object.
 
-Rules:
+| Rule                                             | Status     |
+| ------------------------------------------------ | ---------- |
+| Sequence cannot be empty                         | ✅          |
+| Sequence is automatically converted to uppercase | ✅          |
+| Only **A**, **C**, **G** and **T** are accepted  | ✅          |
+| Organism must be a non-empty string              | ✅          |
+| Chromosome must be a non-empty string            | ✅          |
+| RNA support                                      | 🚧 Planned |
 
-1. The sequence cannot be empty.
-2. The sequence may be lowercase, uppercase or mixed case; it is automatically converted to uppercase.
-3. The sequence must contain only valid DNA nucleotides: A, C, G and T.
-4. The organism cannot be empty and must be a string.
-5. The chromosome cannot be empty and must be a string.
-6. Genome Embeddings v1 supports DNA only. RNA support is planned for a future release.
 
+---
+
+## Installation
+
+```bash
+git clone https://github.com/<username>/genome-embeddings.git
+cd genome-embeddings
+pip install -r requirements.txt
+```
+
+---
+
+## Running the tests
+
+```bash
+pytest
+```
+
+---
+
+## Project Structure
+
+```text
+genome-embeddings/
+├── src/
+│   └── genome.py
+├── tests/
+│   ├── test_genome.py
+│   └── conftest.py
+├── README.md
+├── requirements.txt
+└── LICENSE
+```
+
+---
+
+## Why this project?
+
+Most genomic embeddings rely on neural networks trained on massive datasets.
+
+Genome Embeddings explores an alternative direction: representing genomes through mathematically interpretable descriptors that can be analyzed, compared and eventually integrated with machine learning models.
+
+---
+
+## License
+
+This project is released under the MIT License. See the [LICENSE](LICENSE) file for details.
