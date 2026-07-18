@@ -33,4 +33,21 @@ class Genome:
             if character in gc_bases:
                 gc_count += 1
         
-        return gc_count / self.length() 
+        return gc_count / self.length()
+
+    def reverse_complement(self):
+        reverse_complement = []
+
+        reversed_sequence = self.sequence[::-1]
+
+        complement = {
+            "A": "T",
+            "T": "A",
+            "C": "G",
+            "G": "C",
+        } 
+        
+        for character in reversed_sequence:
+            reverse_complement.append(complement[character])
+        
+        return "".join(reverse_complement)
