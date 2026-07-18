@@ -17,6 +17,10 @@ def all_a_genome():
 def all_gc_genome():
     return Genome (sequence="GCCGGGCC")
 
+@pytest.fixture
+def genome_kmers_test():
+    return Genome (sequence="ACGTAC")
+
 def test_length(genome):
     assert genome.length() == 8
 
@@ -44,3 +48,6 @@ def test_from_fasta_reads_sequence():
     genome = Genome.from_fasta("tests/data/example.fasta")
     assert genome.sequence == "ACGTTGCA"
     assert genome.header == ">Example sequence"
+
+def test_kmers(genome_kmers_test):
+    assert genome_kmers_test.kmers(3) == ["ACG","CGT","GTA","TAC",]

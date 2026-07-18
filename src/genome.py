@@ -65,3 +65,17 @@ class Genome:
             reverse_complement.append(complement[character])
         
         return "".join(reverse_complement)
+    
+    def kmers(self, k):
+        if type(k) != int:
+            raise TypeError(f"k must be an integer, got {type(k).__name__}.")
+        if k <= 0:
+            raise ValueError(f"{k} must be positive.")
+        if k > self.length():
+            raise ValueError(f"{k} k cannot exceed the sequence length.")
+        
+        kmers = []
+        for i in range(self.length() - k + 1):
+            kmer = self.sequence[i:i+k]
+            kmers.append(kmer)
+        return kmers
