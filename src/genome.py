@@ -29,3 +29,13 @@ class Genome:
 
     def length(self):
         return len(self.sequence)
+
+    def gc_content(self):
+        gc_bases = {"C", "G"}
+        gc_count = 0
+
+        for character in self.sequence:
+            if character in gc_bases:
+                gc_count += 1
+        
+        return gc_count / self.length() 
