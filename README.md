@@ -1,5 +1,10 @@
 # Genome Embeddings
 
+![Python]([https://img.shields.io/badge/Python-3.13-blue](https://img.shields.io/badge/Python-3.13-blue))  
+![License]([https://img.shields.io/github/license/GuglielmoMarengo/genome-embeddings](https://img.shields.io/github/license/GuglielmoMarengo/genome-embeddings))  
+![Last Commit]([https://img.shields.io/github/last-commit/GuglielmoMarengo/genome-embeddings](https://img.shields.io/github/last-commit/GuglielmoMarengo/genome-embeddings))  
+![Status]([https://img.shields.io/badge/Status-In%20Development-orange](https://img.shields.io/badge/Status-In%20Development-orange))
+
 **Turning genomes into mathematics.**
 
 Genome Embeddings is an open-source Python project for representing genomic sequences through mathematical descriptors.
