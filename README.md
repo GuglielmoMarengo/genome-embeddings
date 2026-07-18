@@ -1,9 +1,9 @@
 # Genome Embeddings
 
-![Python]([https://img.shields.io/badge/Python-3.13-blue](https://img.shields.io/badge/Python-3.13-blue))  
-![License]([https://img.shields.io/github/license/GuglielmoMarengo/genome-embeddings](https://img.shields.io/github/license/GuglielmoMarengo/genome-embeddings))  
-![Last Commit]([https://img.shields.io/github/last-commit/GuglielmoMarengo/genome-embeddings](https://img.shields.io/github/last-commit/GuglielmoMarengo/genome-embeddings))  
-![Status]([https://img.shields.io/badge/Status-In%20Development-orange](https://img.shields.io/badge/Status-In%20Development-orange))
+[![Python](https://img.shields.io/badge/Python-3-blue)](https://www.python.org/)
+[![License](https://img.shields.io/github/license/GuglielmoMarengo/genome-embeddings)](LICENSE)
+[![Last Commit](https://img.shields.io/github/last-commit/GuglielmoMarengo/genome-embeddings)](https://github.com/GuglielmoMarengo/genome-embeddings/commits/main)
+[![Status](https://img.shields.io/badge/Status-In%20Development-orange)](https://github.com/GuglielmoMarengo/genome-embeddings)
 
 **Turning genomes into mathematics.**
 
@@ -12,6 +12,8 @@ Genome Embeddings is an open-source Python project for representing genomic sequ
 Rather than relying solely on machine learning, the project explores representations inspired by information theory, number theory, graph theory and statistics.
 
 ---
+
+
 
 ## Vision
 
