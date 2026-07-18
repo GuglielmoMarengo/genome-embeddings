@@ -1,4 +1,4 @@
-# # Genome Embeddings
+# Genome Embeddings
 
 Genome Embeddings is an open-source project that explores mathematical representations of genomic sequences.
 
