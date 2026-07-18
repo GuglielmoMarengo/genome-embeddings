@@ -2,7 +2,9 @@
 
 **Turning genomes into mathematics.**
 
-Genome Embeddings is an open-source Python project for representing genomic sequences through mathematical descriptors. Rather than relying solely on machine learning, the project explores representations inspired by information theory, number theory, graph theory and statistics.
+Genome Embeddings is an open-source Python project for representing genomic sequences through mathematical descriptors.
+
+Rather than relying solely on machine learning, the project explores representations inspired by information theory, number theory, graph theory and statistics.
 
 ---
 
@@ -13,6 +15,8 @@ Rather than relying exclusively on machine learning models, this project investi
 The long-term goal is to build interpretable genome embeddings that can support downstream bioinformatics, computational biology and AI applications.
 
 ---
+
+
 
 ## Roadmap
 
@@ -30,6 +34,8 @@ The long-term goal is to build interpretable genome embeddings that can support 
 
 ---
 
+
+
 ## Genome Validation Rules
 
 
@@ -45,15 +51,19 @@ The long-term goal is to build interpretable genome embeddings that can support 
 
 ---
 
+
+
 ## Installation
 
 ```bash
-git clone https://github.com/<username>/genome-embeddings.git
+git clone https://github.com/GuglielmoMarengo/genome-embeddings.git
 cd genome-embeddings
 pip install -r requirements.txt
 ```
 
 ---
+
+
 
 ## Running the tests
 
@@ -62,6 +72,8 @@ pytest
 ```
 
 ---
+
+
 
 ## Project Structure
 
@@ -79,6 +91,8 @@ genome-embeddings/
 
 ---
 
+
+
 ## Why this project?
 
 Most genomic embeddings rely on neural networks trained on massive datasets.
@@ -86,6 +100,8 @@ Most genomic embeddings rely on neural networks trained on massive datasets.
 Genome Embeddings explores an alternative direction: representing genomes through mathematically interpretable descriptors that can be analyzed, compared and eventually integrated with machine learning models.
 
 ---
+
+
 
 ## License
 
