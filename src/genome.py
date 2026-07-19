@@ -79,3 +79,21 @@ class Genome:
             kmer = self.sequence[i:i+k]
             kmers.append(kmer)
         return kmers
+    
+    def kmer_frequencies(self, k):
+        if type(k) != int:
+            raise TypeError(f"k must be an integer, got {type(k).__name__}.")
+        if k <= 0:
+            raise ValueError(f"{k} must be positive.")
+        if k > self.length():
+            raise ValueError(f"{k} cannot exceed the sequence length.")
+
+        frequencies = {}
+
+        for kmer in self.kmers(k):
+            if kmer in frequencies:
+                frequencies[kmer] += 1
+            else:
+                frequencies[kmer] = 1
+        
+        return frequencies

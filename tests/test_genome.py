@@ -51,3 +51,12 @@ def test_from_fasta_reads_sequence():
 
 def test_kmers(genome_kmers_test):
     assert genome_kmers_test.kmers(3) == ["ACG","CGT","GTA","TAC",]
+
+def test_kmer_frequencies():
+    genome = Genome(sequence="ACGTAC")
+    assert genome.kmer_frequencies(3) == {
+        "ACG": 1,
+        "CGT": 1,
+        "GTA": 1,
+        "TAC": 1,
+    }
