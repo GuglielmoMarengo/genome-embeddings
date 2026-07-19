@@ -1,33 +1,37 @@
 class Genome:
+    VALID_NUCLEOTIDES = {"A", "C", "G", "T"}
+    GC_BASES = {"C", "G"}
+    COMPLEMENT = {
+        "A": "T",
+        "T": "A",
+        "C": "G",
+        "G": "C",
+    }
+
     def __init__(self, sequence, header=None):
         self.validate_string("Sequence", sequence)
 
         sequence = sequence.upper()
-        valid_nucleotides = {"A", "C", "G", "T"}
-
-        for i, character in enumerate(sequence, start=1):
-            if character not in valid_nucleotides:
-                raise ValueError(f"Invalid character {character} in sequence at position {i}.")
+        self._validate_sequence(sequence)
 
         self.sequence = sequence
         self.header = header
 
     @classmethod
     def from_fasta(cls, filepath):
-        with open(filepath) as file:
-            lines = file.readlines()
+        with open(filepath, encoding="utf-8") as file:
+            lines = [line.strip() for line in file if line.strip()]
 
-            if not lines:
-                raise ValueError("FASTA file is empty.")
+        if not lines:
+            raise ValueError("FASTA file is empty.")
 
-            header = lines[0].strip()
-            if not header.startswith(">"):
-                raise ValueError("FASTA header must start with '>'.")
+        header = lines[0]
+        if not header.startswith(">"):
+            raise ValueError("FASTA header must start with '>'.")
 
-            sequence_lines = lines[1:]
-            sequence = "".join(line.strip() for line in sequence_lines)
+        sequence = "".join(lines[1:])
 
-            return cls(sequence=sequence, header=header)
+        return cls(sequence=sequence, header=header)
 
     @staticmethod
     def validate_string(name, value):
@@ -36,64 +40,39 @@ class Genome:
         if len(value) == 0:
             raise ValueError(f"{name} cannot be empty.")
 
+    @classmethod
+    def _validate_sequence(cls, sequence):
+        for i, character in enumerate(sequence, start=1):
+            if character not in cls.VALID_NUCLEOTIDES:
+                raise ValueError(
+                    f"Invalid character {character} in sequence at position {i}."
+                )
+
     def length(self):
         return len(self.sequence)
 
     def gc_content(self):
-        gc_bases = {"C", "G"}
-        gc_count = 0
-
-        for character in self.sequence:
-            if character in gc_bases:
-                gc_count += 1
-        
+        gc_count = sum(1 for character in self.sequence if character in self.GC_BASES)
         return gc_count / self.length()
 
     def reverse_complement(self):
-        reverse_complement = []
+        return "".join(self.COMPLEMENT[character] for character in reversed(self.sequence))
 
-        reversed_sequence = self.sequence[::-1]
-
-        complement = {
-            "A": "T",
-            "T": "A",
-            "C": "G",
-            "G": "C",
-        } 
-        
-        for character in reversed_sequence:
-            reverse_complement.append(complement[character])
-        
-        return "".join(reverse_complement)
-    
     def kmers(self, k):
         if type(k) != int:
             raise TypeError(f"k must be an integer, got {type(k).__name__}.")
         if k <= 0:
-            raise ValueError(f"{k} must be positive.")
+            raise ValueError(f"k must be positive. Got {k}.")
         if k > self.length():
-            raise ValueError(f"{k} k cannot exceed the sequence length.")
-        
-        kmers = []
-        for i in range(self.length() - k + 1):
-            kmer = self.sequence[i:i+k]
-            kmers.append(kmer)
-        return kmers
-    
-    def kmer_frequencies(self, k):
-        if type(k) != int:
-            raise TypeError(f"k must be an integer, got {type(k).__name__}.")
-        if k <= 0:
-            raise ValueError(f"{k} must be positive.")
-        if k > self.length():
-            raise ValueError(f"{k} cannot exceed the sequence length.")
+            raise ValueError(f"k cannot exceed the sequence length. Got {k}.")
 
+        sequence_length = self.length()
+        return [self.sequence[i:i + k] for i in range(sequence_length - k + 1)]
+
+    def kmer_frequencies(self, k):
         frequencies = {}
 
         for kmer in self.kmers(k):
-            if kmer in frequencies:
-                frequencies[kmer] += 1
-            else:
-                frequencies[kmer] = 1
-        
+            frequencies[kmer] = frequencies.get(kmer, 0) + 1
+
         return frequencies

@@ -1,60 +1,61 @@
+from pathlib import Path
+
 import pytest
+
 from src.genome import Genome
 
-@pytest.fixture
-def genome():
-    return Genome (sequence="ACGTACGT")
 
-@pytest.fixture
-def aagc_genome():
-    return Genome (sequence="AAGC")
+TEST_DATA_DIR = Path(__file__).parent / "data"
 
-@pytest.fixture
-def all_a_genome():
-    return Genome (sequence="AAAAAAAA")
 
-@pytest.fixture
-def all_gc_genome():
-    return Genome (sequence="GCCGGGCC")
+def make_genome(sequence, header=None):
+    return Genome(sequence=sequence, header=header)
 
-@pytest.fixture
-def genome_kmers_test():
-    return Genome (sequence="ACGTAC")
 
-def test_length(genome):
-    assert genome.length() == 8
+def test_length():
+    assert make_genome("ACGTACGT").length() == 8
 
-def test_gc_content(genome):
-    assert genome.gc_content() == 0.5
 
-def test_reverse_complement(aagc_genome):
-    assert aagc_genome.reverse_complement() == "GCTT"
+@pytest.mark.parametrize(
+    "sequence, expected_gc",
+    [
+        ("ACGTACGT", 0.5),
+        ("AAAAAAAA", 0.0),
+        ("GCCGGGCC", 1.0),
+    ],
+)
+def test_gc_content(sequence, expected_gc):
+    assert make_genome(sequence).gc_content() == expected_gc
 
-def test_gc_content_all_a(all_a_genome):
-    assert all_a_genome.gc_content() == 0
 
-def test_gc_content_all_gc(all_gc_genome):
-    assert all_gc_genome.gc_content() == 1
+def test_reverse_complement():
+    assert make_genome("AAGC").reverse_complement() == "GCTT"
 
-def test_value_error():
-    with pytest.raises(ValueError, match="Invalid character X in sequence at position 4."):
-        Genome(sequence="ACGX")
 
-def test_empty_sequence_raises_value_error():
-    with pytest.raises(ValueError, match="Sequence cannot be empty."):
-        Genome(sequence="")
+@pytest.mark.parametrize(
+    "sequence, message",
+    [
+        ("ACGX", "Invalid character X in sequence at position 4."),
+        ("", "Sequence cannot be empty."),
+    ],
+)
+def test_invalid_sequence(sequence, message):
+    with pytest.raises(ValueError, match=message):
+        Genome(sequence=sequence)
+
 
 def test_from_fasta_reads_sequence():
-    genome = Genome.from_fasta("tests/data/example.fasta")
+    genome = Genome.from_fasta(TEST_DATA_DIR / "example.fasta")
     assert genome.sequence == "ACGTTGCA"
     assert genome.header == ">Example sequence"
 
-def test_kmers(genome_kmers_test):
-    assert genome_kmers_test.kmers(3) == ["ACG","CGT","GTA","TAC",]
+
+def test_kmers():
+    assert make_genome("ACGTAC").kmers(3) == ["ACG", "CGT", "GTA", "TAC"]
+
 
 def test_kmer_frequencies():
-    genome = Genome(sequence="ACGTAC")
-    assert genome.kmer_frequencies(3) == {
+    assert make_genome("ACGTAC").kmer_frequencies(3) == {
         "ACG": 1,
         "CGT": 1,
         "GTA": 1,
