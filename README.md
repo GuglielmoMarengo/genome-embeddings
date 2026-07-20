@@ -7,13 +7,15 @@
 
 **Turning genomes into mathematics.**
 
-Genome Embeddings is an open-source Python project for representing genomic sequences through mathematical descriptors.
+Genome Embeddings is an open-source Python project for representing genomic sequences through mathematically interpretable descriptors.
 
 Rather than relying solely on machine learning, the project explores representations inspired by information theory, number theory, graph theory and statistics.
 
 ---
 
-## Vision
+
+
+# Vision
 
 Rather than relying exclusively on machine learning models, this project investigates mathematical descriptors derived from information theory, number theory, graph theory and statistics.
 
@@ -23,7 +25,7 @@ The long-term goal is to build interpretable genome embeddings that can support 
 
 
 
-## Implemented Features
+# Implemented Features
 
 Current capabilities include:
 
@@ -36,41 +38,59 @@ Current capabilities include:
 - Shannon entropy
 - k-mer extraction
 - k-mer frequency analysis
+- Genome descriptor generation
 
 ---
 
 
 
-## Quick Example
+# Quick Example
 
 ```python
 from src.genome import Genome
 
 genome = Genome.from_fasta("data/gfp.fasta")
+descriptor = genome.descriptor()
 
 print(f"Length: {genome.length()} bp")
-print(f"GC Content: {genome.gc_content():.2f}%")
+print(f"GC Content: {genome.gc_content() * 100:.2f}%")
 print(f"Shannon Entropy: {genome.shannon_entropy():.4f} bits")
+
+print(descriptor.to_dict())
+```
+
+Example output:
+
+```text
+{
+    "length": 922,
+    "gc_content": 0.3623,
+    "shannon_entropy": 1.9403
+}
 ```
 
 ---
 
 
 
-## Roadmap
+# Roadmap
 
 - [x] Genome representation
 - [x] FASTA parser
 - [x] Sequence validation
+- [x] Sequence length
 - [x] GC content
 - [x] Reverse complement
 - [x] Nucleotide frequencies
 - [x] Shannon entropy
 - [x] k-mer extraction
 - [x] k-mer frequencies
-- [ ] Genome descriptors
+- [x] Genome descriptors
 - [ ] Genome embeddings
 - [ ] Genome similarity metrics
+- [ ] Graph-based descriptors
+- [ ] Information-theoretic descriptors
+- [ ] Spectral descriptors
 - [ ] Visualization tools
 - [ ] Embedding export
 
@@ -78,7 +98,7 @@ print(f"Shannon Entropy: {genome.shannon_entropy():.4f} bits")
 
 
 
-## Genome Validation Rules
+# Genome Validation Rules
 
 
 | Rule                                             | Status     |
@@ -86,6 +106,7 @@ print(f"Shannon Entropy: {genome.shannon_entropy():.4f} bits")
 | Sequence cannot be empty                         | ✅          |
 | Sequence is automatically converted to uppercase | ✅          |
 | Only **A**, **C**, **G** and **T** are accepted  | ✅          |
+| FASTA header validation                          | ✅          |
 | RNA support                                      | 🚧 Planned |
 
 
@@ -93,7 +114,7 @@ print(f"Shannon Entropy: {genome.shannon_entropy():.4f} bits")
 
 
 
-## Installation
+# Installation
 
 ```bash
 git clone https://github.com/GuglielmoMarengo/genome-embeddings.git
@@ -105,24 +126,27 @@ pip install -r requirements.txt
 
 
 
-## Running the tests
+# Running the Tests
 
 ```bash
 pytest
 ```
 
+All current tests should pass successfully.
+
 ---
 
 
 
-## Project Structure
+# Project Structure
 
 ```text
 genome-embeddings/
 ├── data/
 │   └── gfp.fasta
 ├── src/
-│   └── genome.py
+│   ├── genome.py
+│   └── genome_descriptor.py
 ├── tests/
 │   ├── data/
 │   │   └── example.fasta
@@ -137,32 +161,66 @@ genome-embeddings/
 
 
 
-## Why this project?
+# Why this Project?
 
 Most genomic embeddings rely on neural networks trained on massive datasets.
 
-Genome Embeddings explores an alternative direction: representing genomes through mathematically interpretable descriptors that can be analyzed, compared and eventually integrated with machine learning models.
+Genome Embeddings explores an alternative direction by representing genomes through mathematically interpretable descriptors.
 
-The project emphasizes **interpretability**, **reproducibility**, and **mathematical insight** before predictive performance.
+Rather than treating a genome as raw text, this project aims to describe it as a mathematical object whose properties can be measured, compared and eventually embedded into a vector space.
+
+The project emphasizes:
+
+- Mathematical interpretability
+- Reproducibility
+- Explainable descriptors
+- Extensibility
+- Integration with Machine Learning
 
 ---
 
 
 
-## Example Dataset
+# Example Dataset
+
+The repository currently includes:
 
 **gfp.fasta**
 
 - **Organism:** *Aequorea victoria*
 - **Gene:** Green Fluorescent Protein (GFP)
-- **Source:** NCBI GenBank L29345.1
+- **Sequence length:** 922 bp
+- **Source:** NCBI GenBank (L29345.1)
 
-This real sequence is included as an example dataset for demonstrating the library's functionality.
+This real sequence is used to demonstrate every implemented feature of the library.
 
 ---
 
 
 
-## License
+# Long-Term Vision
 
-This project is released under the MIT License. See the [LICENSE](LICENSE) file for details.
+The project roadmap is intentionally divided into two phases.
+
+The first phase focuses on building a collection of mathematically meaningful genome descriptors.
+
+The second phase combines those descriptors into high-dimensional vector representations (genome embeddings) that can be used for:
+
+- Genome similarity
+- Clustering
+- Classification
+- Anomaly detection
+- Machine Learning
+- Artificial Intelligence applications
+
+The goal is not to replace existing deep learning approaches, but to complement them with interpretable mathematical representations.
+
+---
+
+
+
+# License
+
+This project is released under the MIT License.
+
+See the [LICENSE](LICENSE) file for details.

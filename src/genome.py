@@ -1,4 +1,23 @@
 import math
+from dataclasses import dataclass
+
+
+@dataclass(slots=True)
+class GenomeDescriptor:
+    length: int
+    gc_content: float
+    shannon_entropy: float
+
+    def to_dict(self) -> dict[str, float | int]:
+        return {
+            "length": self.length,
+            "gc_content": self.gc_content,
+            "shannon_entropy": self.shannon_entropy,
+        }
+
+    def to_vector(self) -> list[float]:
+        return [float(self.length), float(self.gc_content), float(self.shannon_entropy)]
+
 
 class Genome:
     VALID_NUCLEOTIDES = {"A", "C", "G", "T"}
@@ -10,7 +29,7 @@ class Genome:
         "G": "C",
     }
 
-    def __init__(self, sequence, header=None):
+    def __init__(self, sequence: str, header: str | None = None):
         self.validate_string("Sequence", sequence)
 
         sequence = sequence.upper()
@@ -32,7 +51,6 @@ class Genome:
             raise ValueError("FASTA header must start with '>'.")
 
         sequence = "".join(lines[1:])
-
         return cls(sequence=sequence, header=header)
 
     @staticmethod
@@ -43,24 +61,24 @@ class Genome:
             raise ValueError(f"{name} cannot be empty.")
 
     @classmethod
-    def _validate_sequence(cls, sequence):
+    def _validate_sequence(cls, sequence: str):
         for i, character in enumerate(sequence, start=1):
             if character not in cls.VALID_NUCLEOTIDES:
                 raise ValueError(
                     f"Invalid character {character} in sequence at position {i}."
                 )
 
-    def length(self):
+    def length(self) -> int:
         return len(self.sequence)
 
-    def gc_content(self):
+    def gc_content(self) -> float:
         gc_count = sum(1 for character in self.sequence if character in self.GC_BASES)
         return gc_count / self.length()
 
-    def reverse_complement(self):
+    def reverse_complement(self) -> str:
         return "".join(self.COMPLEMENT[character] for character in reversed(self.sequence))
 
-    def kmers(self, k):
+    def kmers(self, k: int) -> list[str]:
         if type(k) != int:
             raise TypeError(f"k must be an integer, got {type(k).__name__}.")
         if k <= 0:
@@ -71,29 +89,36 @@ class Genome:
         sequence_length = self.length()
         return [self.sequence[i:i + k] for i in range(sequence_length - k + 1)]
 
-    def kmer_frequencies(self, k):
-        frequencies = {}
+    def kmer_frequencies(self, k: int) -> dict[str, int]:
+        frequencies: dict[str, int] = {}
 
         for kmer in self.kmers(k):
             frequencies[kmer] = frequencies.get(kmer, 0) + 1
 
         return frequencies
-    
-    def nucleotide_frequencies(self):
-        frequencies = {}
+
+    def nucleotide_frequencies(self) -> dict[str, int]:
+        frequencies: dict[str, int] = {}
 
         for character in self.sequence:
             frequencies[character] = frequencies.get(character, 0) + 1
-        
+
         return frequencies
 
-    def shannon_entropy(self):
+    def shannon_entropy(self) -> float:
         frequencies = self.nucleotide_frequencies()
         total = self.length()
-        entropy = 0
+        entropy = 0.0
 
         for frequency in frequencies.values():
             probability = frequency / total
             entropy -= probability * math.log2(probability)
 
         return entropy
+
+    def descriptor(self) -> GenomeDescriptor:
+        return GenomeDescriptor(
+            length=self.length(),
+            gc_content=self.gc_content(),
+            shannon_entropy=self.shannon_entropy(),
+        )

@@ -19,6 +19,7 @@ def print_kmer_frequencies(genome, k=3, limit=10):
 
 def main():
     genome = Genome.from_fasta(GFP_FASTA_PATH)
+    descriptor = genome.descriptor()
 
     print(f"Header: {genome.header}")
     print(f"Sequence (first 100 bp): {genome.sequence[:100]}...")
@@ -26,7 +27,10 @@ def main():
     print(f"GC Content: {genome.gc_content() * 100:.2f}%")
     print(f"Shannon entropy: {genome.shannon_entropy():.4f} bits")
     print(f"Reverse Complement (first 100 bp): {genome.reverse_complement()[:100]}...")
+    print(f"Genome Descriptor: {descriptor.to_dict()}")
+    print(f"Genome Descriptor Vector: {descriptor.to_vector()}")
     print_kmer_frequencies(genome, k=3, limit=10)
+
 
 if __name__ == "__main__":
     main()
