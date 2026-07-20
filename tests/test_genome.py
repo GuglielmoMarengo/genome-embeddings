@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+import math
 
 from src.genome import Genome
 
@@ -61,3 +62,21 @@ def test_kmer_frequencies():
         "GTA": 1,
         "TAC": 1,
     }
+
+def test_nucleotide_frequencies():
+    assert make_genome("ACGTAC").nucleotide_frequencies() == {
+        "A": 2,
+        "C": 2,
+        "G": 1,
+        "T": 1
+    }
+
+def test_shannon_entropy_single_nucleotide():
+    genome = make_genome("AAAAAAAAAA")
+
+    assert genome.shannon_entropy() == pytest.approx(0.0)
+
+def test_shannon_entropy_uniform_distribution():
+    genome = make_genome("ACGT")
+
+    assert genome.shannon_entropy() == pytest.approx(2.0)

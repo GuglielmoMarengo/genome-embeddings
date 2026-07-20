@@ -21,21 +21,62 @@ The long-term goal is to build interpretable genome embeddings that can support 
 
 ---
 
+
+
+## Implemented Features
+
+Current capabilities include:
+
+- FASTA parsing
+- DNA sequence validation
+- Sequence length
+- GC content
+- Reverse complement
+- Nucleotide frequency analysis
+- Shannon entropy
+- k-mer extraction
+- k-mer frequency analysis
+
+---
+
+
+
+## Quick Example
+
+```python
+from src.genome import Genome
+
+genome = Genome.from_fasta("data/gfp.fasta")
+
+print(f"Length: {genome.length()} bp")
+print(f"GC Content: {genome.gc_content():.2f}%")
+print(f"Shannon Entropy: {genome.shannon_entropy():.4f} bits")
+```
+
+---
+
+
+
 ## Roadmap
 
-- [x] Genome representation  
-- [x] Sequence validation  
-- [x] GC content  
-- [x] Reverse complement  
-- [ ] Shannon entropy  
-- [ ] k-mer frequencies  
-- [ ] Genome embeddings  
-- [ ] Genome similarity metrics  
-- [ ] FASTA parser  
-- [ ] Visualization tools  
+- [x] Genome representation
+- [x] FASTA parser
+- [x] Sequence validation
+- [x] GC content
+- [x] Reverse complement
+- [x] Nucleotide frequencies
+- [x] Shannon entropy
+- [x] k-mer extraction
+- [x] k-mer frequencies
+- [ ] Genome descriptors
+- [ ] Genome embeddings
+- [ ] Genome similarity metrics
+- [ ] Visualization tools
 - [ ] Embedding export
 
 ---
+
+
 
 ## Genome Validation Rules
 
@@ -45,12 +86,12 @@ The long-term goal is to build interpretable genome embeddings that can support 
 | Sequence cannot be empty                         | ✅          |
 | Sequence is automatically converted to uppercase | ✅          |
 | Only **A**, **C**, **G** and **T** are accepted  | ✅          |
-| Organism must be a non-empty string              | ✅          |
-| Chromosome must be a non-empty string            | ✅          |
 | RNA support                                      | 🚧 Planned |
 
 
 ---
+
+
 
 ## Installation
 
@@ -62,6 +103,8 @@ pip install -r requirements.txt
 
 ---
 
+
+
 ## Running the tests
 
 ```bash
@@ -69,6 +112,8 @@ pytest
 ```
 
 ---
+
+
 
 ## Project Structure
 
@@ -90,25 +135,33 @@ genome-embeddings/
 
 ---
 
+
+
 ## Why this project?
 
 Most genomic embeddings rely on neural networks trained on massive datasets.
 
 Genome Embeddings explores an alternative direction: representing genomes through mathematically interpretable descriptors that can be analyzed, compared and eventually integrated with machine learning models.
 
+The project emphasizes **interpretability**, **reproducibility**, and **mathematical insight** before predictive performance.
+
 ---
 
-## Example dataset
+
+
+## Example Dataset
 
 **gfp.fasta**
 
-- Organism: *Aequorea victoria*
+- **Organism:** *Aequorea victoria*
+- **Gene:** Green Fluorescent Protein (GFP)
+- **Source:** NCBI GenBank L29345.1
 
-- Gene: Green Fluorescent Protein (GFP)
-
-- Source: NCBI GenBank L29345.1
+This real sequence is included as an example dataset for demonstrating the library's functionality.
 
 ---
+
+
 
 ## License
 

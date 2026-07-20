@@ -24,9 +24,9 @@ def main():
     print(f"Sequence (first 100 bp): {genome.sequence[:100]}...")
     print(f"Sequence Length: {genome.length()} bp")
     print(f"GC Content: {genome.gc_content() * 100:.2f}%")
+    print(f"Shannon entropy: {genome.shannon_entropy():.4f} bits")
     print(f"Reverse Complement (first 100 bp): {genome.reverse_complement()[:100]}...")
     print_kmer_frequencies(genome, k=3, limit=10)
-
 
 if __name__ == "__main__":
     main()

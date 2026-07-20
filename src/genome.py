@@ -1,3 +1,5 @@
+import math
+
 class Genome:
     VALID_NUCLEOTIDES = {"A", "C", "G", "T"}
     GC_BASES = {"C", "G"}
@@ -76,3 +78,22 @@ class Genome:
             frequencies[kmer] = frequencies.get(kmer, 0) + 1
 
         return frequencies
+    
+    def nucleotide_frequencies(self):
+        frequencies = {}
+
+        for character in self.sequence:
+            frequencies[character] = frequencies.get(character, 0) + 1
+        
+        return frequencies
+
+    def shannon_entropy(self):
+        frequencies = self.nucleotide_frequencies()
+        total = self.length()
+        entropy = 0
+
+        for frequency in frequencies.values():
+            probability = frequency / total
+            entropy -= probability * math.log2(probability)
+
+        return entropy
