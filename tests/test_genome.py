@@ -87,9 +87,17 @@ def test_descriptor():
     descriptor = genome.descriptor()
 
     assert isinstance(descriptor, GenomeDescriptor)
-    assert descriptor.to_dict() == {
-        "length": 8,
-        "gc_content": 0.5,
-        "shannon_entropy": 2.0,
-    }
-    assert descriptor.to_vector() == [8.0, 0.5, 2.0]
+    assert descriptor.length == 8
+    assert descriptor.gc_content == 0.5
+    assert descriptor.at_content == 0.5
+    assert descriptor.shannon_entropy == pytest.approx(2.0)
+    assert descriptor.gc_skew == 0.0
+    assert descriptor.purine_content == 0.5
+    assert descriptor.pyrimidine_content == 0.5
+    assert descriptor.kmer_length == 3
+    assert descriptor.kmer_diversity == pytest.approx(4 / 6)
+    assert descriptor.kmer_entropy == pytest.approx(1.9182958340544896)
+
+    assert descriptor.to_vector() == pytest.approx(
+        [8.0, 0.5, 0.5, 2.0, 0.0, 0.5, 0.5, 3.0, 4 / 6, 1.9182958340544896]
+    )

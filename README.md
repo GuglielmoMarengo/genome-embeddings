@@ -38,7 +38,28 @@ Current capabilities include:
 - Shannon entropy
 - k-mer extraction
 - k-mer frequency analysis
-- Genome descriptor generation
+- Genome descriptor objects
+
+---
+
+
+
+# Genome Descriptor
+
+The current `GenomeDescriptor` object summarizes a sequence through mathematical features that are useful for downstream analysis and embedding construction.
+
+Current descriptor fields include:
+
+- `length`
+- `gc_content`
+- `at_content`
+- `shannon_entropy`
+- `gc_skew`
+- `purine_content`
+- `pyrimidine_content`
+- `kmer_length`
+- `kmer_diversity`
+- `kmer_entropy`
 
 ---
 
@@ -57,6 +78,7 @@ print(f"GC Content: {genome.gc_content() * 100:.2f}%")
 print(f"Shannon Entropy: {genome.shannon_entropy():.4f} bits")
 
 print(descriptor.to_dict())
+print(descriptor.to_vector())
 ```
 
 Example output:
@@ -65,7 +87,14 @@ Example output:
 {
     "length": 922,
     "gc_content": 0.3623,
-    "shannon_entropy": 1.9403
+    "at_content": 0.6377,
+    "shannon_entropy": 1.9403,
+    "gc_skew": -0.0124,
+    "purine_content": 0.4989,
+    "pyrimidine_content": 0.5011,
+    "kmer_length": 3,
+    "kmer_diversity": 0.9857,
+    "kmer_entropy": 4.1234
 }
 ```
 
@@ -78,7 +107,6 @@ Example output:
 - [x] Genome representation
 - [x] FASTA parser
 - [x] Sequence validation
-- [x] Sequence length
 - [x] GC content
 - [x] Reverse complement
 - [x] Nucleotide frequencies
@@ -88,9 +116,6 @@ Example output:
 - [x] Genome descriptors
 - [ ] Genome embeddings
 - [ ] Genome similarity metrics
-- [ ] Graph-based descriptors
-- [ ] Information-theoretic descriptors
-- [ ] Spectral descriptors
 - [ ] Visualization tools
 - [ ] Embedding export
 
@@ -129,7 +154,7 @@ pip install -r requirements.txt
 # Running the Tests
 
 ```bash
-pytest
+python -m pytest
 ```
 
 All current tests should pass successfully.
@@ -145,8 +170,7 @@ genome-embeddings/
 ├── data/
 │   └── gfp.fasta
 ├── src/
-│   ├── genome.py
-│   └── genome_descriptor.py
+│   └── genome.py
 ├── tests/
 │   ├── data/
 │   │   └── example.fasta
