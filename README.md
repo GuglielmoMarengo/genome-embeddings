@@ -554,7 +554,7 @@ The program:
 - [x] Cosine similarity
 - [x] Feature-level comparison
 - [x] Explainable feature differences
-- [ ] GenomeComparison object
+- [x] GenomeComparison object
 
 ## Future development
 

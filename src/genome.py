@@ -122,6 +122,29 @@ class GenomeDescriptor:
                 second_vector,
             )
         }
+    
+    def compare(self, other) -> "GenomeComparison":
+        if not isinstance(other, GenomeDescriptor):
+            raise TypeError("other must be a GenomeDescriptor.")
+
+        return GenomeComparison(
+            euclidean_distance=self.euclidean_distance(other),
+            cosine_similarity=self.cosine_similarity(other),
+            feature_differences=self.feature_differences(other),
+        )
+
+@dataclass(slots=True)
+class GenomeComparison:
+    euclidean_distance: float
+    cosine_similarity: float
+    feature_differences: dict[str, float]
+
+    def sorted_feature_differences(self) -> list[tuple[str, float]]:
+        return sorted(
+            self.feature_differences.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )
 
 class Genome:
     VALID_NUCLEOTIDES = {"A", "C", "G", "T"}

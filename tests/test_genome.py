@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from src.genome import Genome, GenomeDescriptor
+from src.genome import Genome, GenomeComparison, GenomeDescriptor
 
 
 TEST_DATA_DIR = Path(__file__).parent / "data"
@@ -233,3 +233,31 @@ def test_feature_differences_contains_normalized_features():
         "kmer_diversity",
         "normalized_kmer_entropy",
     }
+
+def test_compare_returns_genome_comparison():
+    first = make_genome("ACGTACGT").descriptor(k=3)
+    second = make_genome("AAAAAAAA").descriptor(k=3)
+
+    comparison = first.compare(second)
+
+    assert isinstance(comparison, GenomeComparison)
+    assert comparison.euclidean_distance > 0.0
+    assert 0.0 <= comparison.cosine_similarity <= 1.0
+    assert comparison.feature_differences == first.feature_differences(second)
+
+def test_compare_rejects_invalid_type():
+    descriptor = make_genome("ACGTACGT").descriptor(k=3)
+
+    with pytest.raises(TypeError, match="other must be a GenomeDescriptor."):
+        descriptor.compare("invalid")
+    
+def test_sorted_feature_differences_are_descending():
+    first = make_genome("ACGTACGT").descriptor(k=3)
+    second = make_genome("AAAAAAAA").descriptor(k=3)
+
+    comparison = first.compare(second)
+    sorted_differences = comparison.sorted_feature_differences()
+
+    values = [value for _, value in sorted_differences]
+
+    assert values == sorted(values, reverse=True)

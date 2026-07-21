@@ -60,22 +60,14 @@ def print_kmer_frequencies(
             break
 
 
-def print_genome_comparison(first_descriptor, second_descriptor):
-    euclidean_distance = first_descriptor.euclidean_distance(second_descriptor)
-    cosine_similarity = first_descriptor.cosine_similarity(second_descriptor)
-    feature_differences = first_descriptor.feature_differences(second_descriptor)
-
+def print_genome_comparison(comparison):
     print("\nGenome Comparison:")
-    print(f"Euclidean distance: {euclidean_distance:.4f}")
-    print(f"Cosine similarity: {cosine_similarity:.4f}")
+    print(f"Euclidean distance: {comparison.euclidean_distance:.4f}")
+    print(f"Cosine similarity: {comparison.cosine_similarity:.4f}")
 
     print("\nFeature Differences:")
 
-    for feature_name, difference in sorted(
-        feature_differences.items(),
-        key=lambda item: item[1],
-        reverse=True,
-    ):
+    for feature_name, difference in comparison.sorted_feature_differences():
         print(f"{feature_name}: {difference:.4f}")
 
 
@@ -92,17 +84,18 @@ def main():
     )
 
     print_genome_summary(genome)
+
     print_descriptor(descriptor)
     print_descriptor_vectors(descriptor)
+
+    comparison = descriptor.compare(comparison_descriptor)
+
     print_kmer_frequencies(
         genome,
         k=DEFAULT_KMER_LENGTH,
         limit=DEFAULT_KMER_LIMIT,
     )
-    print_genome_comparison(
-        descriptor,
-        comparison_descriptor,
-    )
+    print_genome_comparison(comparison)
 
 
 if __name__ == "__main__":
