@@ -135,6 +135,11 @@ def test_kmer_diversity_with_repeated_kmers():
 
     assert genome.kmer_diversity(2) == pytest.approx(0.25)
 
+def test_kmer_diversity_uses_theoretical_maximum():
+    genome = make_genome("ACGT" * 20)
+
+    assert genome.kmer_diversity(1) == pytest.approx(1.0)
+
 def test_kmer_entropy_uniform_distribution():
     genome = make_genome("ACGTAC")
 
@@ -144,3 +149,87 @@ def test_kmer_entropy_single_kmer():
     genome = make_genome("AAAAA")
 
     assert genome.kmer_entropy(2) == pytest.approx(0.0)
+
+def test_descriptor_normalized_vector():
+    genome = make_genome("ACGTACGT")
+    descriptor = genome.descriptor(k=3)
+
+    normalized_vector = descriptor.to_normalized_vector()
+
+    assert len(normalized_vector) == 6
+    assert all(0.0 <= value <= 1.0 for value in normalized_vector)
+
+def test_euclidean_distance_between_identical_descriptors():
+    genome = make_genome("ACGTACGT")
+    descriptor = genome.descriptor(k=3)
+
+    assert descriptor.euclidean_distance(descriptor) == pytest.approx(0.0)
+
+def test_euclidean_distance_between_different_descriptors():
+    first = make_genome("ACGTACGT").descriptor(k=3)
+    second = make_genome("AAAAAAAA").descriptor(k=3)
+
+    assert first.euclidean_distance(second) > 0.0
+
+def test_euclidean_distance_is_symmetric():
+    first = make_genome("ACGTACGT").descriptor(k=3)
+    second = make_genome("AAAAAAAA").descriptor(k=3)
+
+    assert first.euclidean_distance(second) == pytest.approx(
+        second.euclidean_distance(first)
+    )
+
+def test_euclidean_distance_rejects_invalid_type():
+    descriptor = make_genome("ACGTACGT").descriptor(k=3)
+
+    with pytest.raises(TypeError, match="other must be a GenomeDescriptor."):
+        descriptor.euclidean_distance("invalid")
+    
+def test_cosine_similarity_identical_descriptors():
+    descriptor = make_genome("ACGTACGT").descriptor(k=3)
+
+    assert descriptor.cosine_similarity(descriptor) == pytest.approx(1.0)
+
+def test_cosine_similarity_is_symmetric():
+    first = make_genome("ACGTACGT").descriptor(k=3)
+    second = make_genome("AAAAAAAA").descriptor(k=3)
+
+    assert first.cosine_similarity(second) == pytest.approx(
+        second.cosine_similarity(first)
+    )
+
+def test_cosine_similarity_rejects_invalid_type():
+    descriptor = make_genome("ACGTACGT").descriptor(k=3)
+
+    with pytest.raises(TypeError, match="other must be a GenomeDescriptor."):
+        descriptor.cosine_similarity("invalid")
+
+def test_cosine_similarity_is_between_zero_and_one():
+    first = make_genome("ACGTACGT").descriptor(k=3)
+    second = make_genome("AAAAAAAA").descriptor(k=3)
+
+    similarity = first.cosine_similarity(second)
+
+    assert 0.0 <= similarity <= 1.0
+
+def test_feature_differences_identical_descriptors_are_zero():
+    descriptor = make_genome("ACGTACGT").descriptor(k=3)
+
+    differences = descriptor.feature_differences(descriptor)
+
+    assert all(value == pytest.approx(0.0) for value in differences.values())
+
+def test_feature_differences_contains_normalized_features():
+    first = make_genome("ACGTACGT").descriptor(k=3)
+    second = make_genome("AAAAAAAA").descriptor(k=3)
+
+    differences = first.feature_differences(second)
+
+    assert set(differences) == {
+        "gc_content",
+        "normalized_shannon_entropy",
+        "normalized_gc_skew",
+        "purine_content",
+        "kmer_diversity",
+        "normalized_kmer_entropy",
+    }

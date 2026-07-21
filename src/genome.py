@@ -42,7 +42,86 @@ class GenomeDescriptor:
             float(self.kmer_diversity),
             float(self.kmer_entropy),
         ]
+    
+    def to_normalized_vector(self) -> list[float]:
+        normalized_shannon_entropy = self.shannon_entropy / 2
+        normalized_gc_skew = (self.gc_skew + 1) / 2
+        normalized_kmer_entropy = (
+            self.kmer_entropy / (2 * self.kmer_length)
+        )
 
+        return [
+            self.gc_content,
+            normalized_shannon_entropy,
+            normalized_gc_skew,
+            self.purine_content,
+            self.kmer_diversity,
+            normalized_kmer_entropy,
+        ]
+    
+    def euclidean_distance(self, other) -> float:
+        if not isinstance(other, GenomeDescriptor):
+            raise TypeError("other must be a GenomeDescriptor.")
+
+        first_vector = self.to_normalized_vector()
+        second_vector = other.to_normalized_vector()
+
+        squared_differences = [
+            (first_value - second_value) ** 2
+            for first_value, second_value in zip(first_vector, second_vector)
+        ]
+
+        return math.sqrt(sum(squared_differences))
+    
+    def cosine_similarity(self, other) -> float:
+        if not isinstance(other, GenomeDescriptor):
+            raise TypeError("other must be a GenomeDescriptor.")
+
+        first_vector = self.to_normalized_vector()
+        second_vector = other.to_normalized_vector()
+
+        dot_product = sum(
+            first_value * second_value
+            for first_value, second_value in zip(first_vector, second_vector)
+        )
+
+        first_magnitude = math.sqrt(
+            sum(value ** 2 for value in first_vector)
+        )
+
+        second_magnitude = math.sqrt(
+            sum(value ** 2 for value in second_vector)
+        )
+
+        if first_magnitude == 0 or second_magnitude == 0:
+            return 0.0
+
+        return dot_product / (first_magnitude * second_magnitude)
+    
+    def feature_differences(self, other) -> dict[str, float]:
+        if not isinstance(other, GenomeDescriptor):
+            raise TypeError("other must be a GenomeDescriptor.")
+
+        feature_names = [
+            "gc_content",
+            "normalized_shannon_entropy",
+            "normalized_gc_skew",
+            "purine_content",
+            "kmer_diversity",
+            "normalized_kmer_entropy",
+        ]
+
+        first_vector = self.to_normalized_vector()
+        second_vector = other.to_normalized_vector()
+
+        return {
+            name: abs(first_value - second_value)
+            for name, first_value, second_value in zip(
+                feature_names,
+                first_vector,
+                second_vector,
+            )
+        }
 
 class Genome:
     VALID_NUCLEOTIDES = {"A", "C", "G", "T"}
@@ -196,21 +275,12 @@ class Genome:
 
         distinct_kmers = len(frequencies)
         total_kmers = len(self.kmers(k))
+        maximum_distinct_kmers = min(total_kmers, len(self.VALID_NUCLEOTIDES) ** k)
 
-        return distinct_kmers / total_kmers
+        return distinct_kmers / maximum_distinct_kmers
     
     def kmer_entropy(self, k):
         frequencies = self.kmer_frequencies(k)
         total_kmers = len(self.kmers(k))
 
         return self._entropy_from_frequencies(frequencies, total_kmers)
-    
-    @staticmethod
-    def _entropy_from_frequencies(frequencies, total):
-        entropy = 0.0
-
-        for frequency in frequencies.values():
-            probability = frequency / total
-            entropy -= probability * math.log2(probability)
-
-        return entropy
