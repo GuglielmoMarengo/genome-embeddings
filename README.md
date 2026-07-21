@@ -93,6 +93,10 @@ Current capabilities include:
 * Matrix labels and metadata
 * Matrix shape validation
 * Matrix metric validation
+* Label-based matrix value lookup
+* Row-oriented matrix conversion
+* Dictionary matrix conversion
+* Defensive copies for converted matrix data
 * Multi-genome comparison using real biological sequences
 
 ---
@@ -660,7 +664,122 @@ The currently supported metrics are:
 * `euclidean`
 * `cosine`
 
-The structured object keeps matrix data, labels and calculation parameters together, preparing the project for future ranking, export, visualization and multiscale analysis.
+The object also provides:
+
+* `get_value(row_label, column_label)`
+* `to_rows()`
+* `to_dict()`
+
+These methods allow matrix data to be queried and converted without separating it from its labels and calculation metadata.
+
+---
+
+## Matrix Value Lookup
+
+A single value can be retrieved by its row and column labels:
+
+```python
+distance = matrix.get_value(
+    row_label="Genome A",
+    column_label="Genome B",
+)
+```
+
+The method resolves the requested labels and returns the corresponding matrix cell:
+
+```python
+print(distance)
+```
+
+```text
+0.12
+```
+
+The lookup preserves row and column direction and does not assume that arbitrary matrices are symmetric.
+
+If either label is unknown, the method raises:
+
+```text
+Unknown genome matrix label: Unknown.
+```
+
+---
+
+## Row-Oriented Conversion
+
+The matrix can be converted into a row-oriented representation:
+
+```python
+rows = matrix.to_rows()
+```
+
+Example:
+
+```python
+[
+    {
+        "label": "Genome A",
+        "values": [0.0, 0.12, 0.45],
+    },
+    {
+        "label": "Genome B",
+        "values": [0.12, 0.0, 0.39],
+    },
+    {
+        "label": "Genome C",
+        "values": [0.45, 0.39, 0.0],
+    },
+]
+```
+
+Each row contains:
+
+* Its genome label
+* A list of numerical values
+
+The returned row values are copies.
+
+Modifying the converted representation therefore does not modify the original `GenomeMatrix`.
+
+---
+
+## Dictionary Conversion
+
+The complete matrix can be converted into a dictionary:
+
+```python
+matrix_dict = matrix.to_dict()
+```
+
+Example:
+
+```python
+{
+    "labels": [
+        "Genome A",
+        "Genome B",
+        "Genome C",
+    ],
+    "values": [
+        [0.0, 0.12, 0.45],
+        [0.12, 0.0, 0.39],
+        [0.45, 0.39, 0.0],
+    ],
+    "metric": "euclidean",
+    "kmer_length": 3,
+}
+```
+
+The dictionary retains:
+
+* Genome labels
+* Numerical matrix values
+* Metric name
+* k-mer length
+
+The returned labels and matrix rows are copies, preventing converted output from modifying the internal state of the original object.
+
+This representation prepares the matrix for future JSON serialization and export functionality.
 
 ---
 
@@ -984,6 +1103,7 @@ print(
     f"Euclidean distance: "
     f"{pairwise_comparison.euclidean_distance:.4f}"
 )
+
 print(
     f"Cosine similarity: "
     f"{pairwise_comparison.cosine_similarity:.4f}"
@@ -1004,14 +1124,20 @@ cosine_matrix = collection.cosine_similarity_matrix(
     k=3,
 )
 
-print(euclidean_matrix.metric)
-print(euclidean_matrix.kmer_length)
-print(euclidean_matrix.labels)
-print(euclidean_matrix.values)
+selected_distance = euclidean_matrix.get_value(
+    row_label="Aequorea GFP",
+    column_label="Acropora GFP",
+)
 
-print(cosine_matrix.metric)
-print(cosine_matrix.kmer_length)
-print(cosine_matrix.labels)
+matrix_rows = euclidean_matrix.to_rows()
+matrix_dict = euclidean_matrix.to_dict()
+
+print(f"Selected distance: {selected_distance:.4f}")
+print(f"First row: {matrix_rows[0]}")
+print(f"Metric: {matrix_dict['metric']}")
+print(f"k-mer length: {matrix_dict['kmer_length']}")
+print(f"Labels: {matrix_dict['labels']}")
+
 print(cosine_matrix.values)
 ```
 
@@ -1044,6 +1170,10 @@ The program:
 15. Creates a structured Euclidean `GenomeMatrix`.
 16. Creates a structured cosine `GenomeMatrix`.
 17. Prints both matrices with their labels and k-mer resolution.
+18. Retrieves a selected distance through `get_value()`.
+19. Converts the Euclidean matrix through `to_rows()`.
+20. Converts the Euclidean matrix through `to_dict()`.
+21. Displays one converted row and the matrix metadata.
 
 ---
 
@@ -1105,9 +1235,11 @@ The program:
 * [x] Matrix shape validation
 * [x] Matrix label-count validation
 * [x] Real multi-genome demonstration
-* [ ] Matrix value lookup
-* [ ] Matrix row conversion
-* [ ] Matrix dictionary conversion
+* [x] Matrix value lookup
+* [x] Matrix row conversion
+* [x] Matrix dictionary conversion
+* [x] Defensive matrix conversion copies
+* [ ] Matrix export
 * [ ] Biological negative controls
 * [ ] Similarity ranking
 * [ ] Clustering
@@ -1194,6 +1326,9 @@ The program:
 | GenomeMatrix labels must match matrix size                | ✅          |
 | GenomeMatrix metric must be supported                     | ✅          |
 | Matrix order follows collection order                     | ✅          |
+| Unknown lookup labels are rejected                        | ✅          |
+| Converted matrix rows are copied                          | ✅          |
+| Converted matrix dictionaries are copied                  | ✅          |
 | Euclidean matrix diagonal equals `0.0`                    | ✅          |
 | Cosine matrix diagonal equals `1.0`                       | ✅          |
 | Ambiguous nucleotide support                              | 🚧 Planned |
@@ -1237,7 +1372,7 @@ For more detailed output:
 python -m pytest -v
 ```
 
-The current test suite contains **63 tests** and covers:
+The current test suite contains **71 tests** and covers:
 
 * Sequence validation
 * Sequence length
@@ -1294,6 +1429,14 @@ The current test suite contains **63 tests** and covers:
 * Cosine matrix symmetry
 * Cosine matrix pairwise consistency
 * Collection matrix label-count validation
+* Label-based matrix value lookup
+* Direction-preserving matrix lookup
+* Unknown row-label validation
+* Unknown column-label validation
+* Row-oriented matrix conversion
+* Row-conversion defensive copies
+* Dictionary matrix conversion
+* Dictionary-conversion defensive copies
 
 ---
 
@@ -1382,7 +1525,11 @@ The `GenomeMatrix` class:
 * Validates matrix dimensions
 * Validates label count
 * Validates the selected metric
-* Prepares matrix data for future lookup, ranking, export and visualization
+* Retrieves values through row and column labels
+* Converts the matrix into row-oriented data
+* Converts the matrix into a dictionary
+* Protects internal state through defensive copies
+* Prepares matrix data for future export and visualization
 
 ## main.py
 
@@ -1394,6 +1541,9 @@ The demonstration program:
 * Presents a detailed pairwise comparison
 * Generates structured multi-genome matrices
 * Prints matrix labels, values, metrics and k-mer resolution
+* Demonstrates label-based value lookup
+* Demonstrates row-oriented conversion
+* Demonstrates dictionary conversion
 
 The resulting architecture is:
 
@@ -1439,16 +1589,18 @@ GenomeCollection
                           ├── labels
                           ├── values
                           ├── metric
-                          └── kmer_length
+                          ├── kmer_length
+                          ├── get_value()
+                          ├── to_rows()
+                          └── to_dict()
 ```
 
-The next architectural steps will extend `GenomeMatrix` with:
+The next architectural steps may extend `GenomeMatrix` with:
 
-* Label-based matrix lookup
-* Row-oriented conversion
-* Dictionary conversion
 * Matrix export
 * Similarity ranking
+* Nearest-neighbour retrieval
+* Heatmap preparation
 * Future support for multiple k-mer lengths
 
 ---
@@ -1470,6 +1622,8 @@ Rather than treating DNA or RNA as raw text, the project treats biological seque
 * Visualized
 * Converted into vectors
 * Organized into structured comparison matrices
+* Queried through biological labels
+* Converted into reusable data structures
 * Analyzed across multiple scales
 * Integrated with statistical models
 * Integrated with machine-learning systems
@@ -1644,6 +1798,8 @@ Current capabilities include:
 * Feature-level difference analysis
 * Structured pairwise comparison objects
 * Structured matrix comparison objects
+* Label-based matrix lookup
+* Reusable matrix conversions
 * Real CDS-to-CDS comparison
 * Multi-genome distance matrices
 * Multi-genome similarity matrices
@@ -1675,9 +1831,9 @@ Future capabilities may include:
 
 This phase will include:
 
-* Matrix lookup and conversion
 * Matrix export
 * Similarity ranking
+* Nearest-neighbour retrieval
 * Clustering
 * Heatmaps
 * Dimensionality reduction

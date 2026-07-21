@@ -261,6 +261,30 @@ def main() -> None:
     print_genome_matrix(euclidean_matrix)
     print_genome_matrix(cosine_matrix)
 
+    print(
+        "\nSelected Euclidean Distance:"
+    )
+
+    selected_distance = euclidean_matrix.get_value(
+        row_label="Aequorea GFP",
+        column_label="Acropora GFP",
+    )
+
+    print(
+        "Aequorea GFP -> Acropora GFP: "
+        f"{selected_distance:.4f}"
+    )
+
+    matrix_rows = euclidean_matrix.to_rows()
+    matrix_dict = euclidean_matrix.to_dict()
+
+    print("\nFirst Euclidean Matrix Row:")
+    print(matrix_rows[0])
+
+    print("\nEuclidean Matrix Metadata:")
+    print(f"Metric: {matrix_dict['metric']}")
+    print(f"k-mer length: {matrix_dict['kmer_length']}")
+    print(f"Labels: {matrix_dict['labels']}")
 
 if __name__ == "__main__":
     main()

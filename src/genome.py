@@ -249,6 +249,61 @@ class GenomeMatrix:
             raise ValueError(
                 "Unsupported genome matrix metric."
             )
+    
+    def get_value(
+        self,
+        row_label: str,
+        column_label: str,
+    ) -> float:
+        row_index = self._label_index(row_label)
+        column_index = self._label_index(column_label)
+
+        return self.values[row_index][column_index]
+    
+    def to_rows(
+        self,
+    ) -> list[dict[str, str | list[float]]]:
+        return [
+            {
+                "label": label,
+                "values": row.copy(),
+            }
+            for label, row in zip(
+                self.labels,
+                self.values,
+                strict=True,
+            )
+        ]
+    
+    def to_dict(
+        self,
+    ) -> dict[
+        str,
+        list[str]
+        | list[list[float]]
+        | str
+        | int,
+    ]:
+        return {
+            "labels": self.labels.copy(),
+            "values": [
+                row.copy()
+                for row in self.values
+            ],
+            "metric": self.metric,
+            "kmer_length": self.kmer_length,
+        }
+
+    def _label_index(
+        self,
+        label: str,
+    ) -> int:
+        try:
+            return self.labels.index(label)
+        except ValueError as error:
+            raise ValueError(
+                f"Unknown genome matrix label: {label}."
+            ) from error
 
 
 class GenomeCollection:

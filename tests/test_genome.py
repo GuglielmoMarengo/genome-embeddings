@@ -772,3 +772,160 @@ def test_collection_matrix_rejects_label_count_mismatch(
             labels=["Only one label"],
             k=3,
         )
+
+def test_genome_matrix_get_value_by_labels():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    value = matrix.get_value(
+        row_label="Genome A",
+        column_label="Genome B",
+    )
+
+    assert value == pytest.approx(0.5)
+
+def test_genome_matrix_get_value_preserves_direction():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[
+            [1.0, 0.8],
+            [0.7, 1.0],
+        ],
+        metric="cosine",
+        kmer_length=3,
+    )
+
+    assert matrix.get_value(
+        row_label="Genome A",
+        column_label="Genome B",
+    ) == pytest.approx(0.8)
+
+    assert matrix.get_value(
+        row_label="Genome B",
+        column_label="Genome A",
+    ) == pytest.approx(0.7)
+
+def test_genome_matrix_get_value_rejects_unknown_row_label():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"Unknown genome matrix label: Unknown\.",
+    ):
+        matrix.get_value(
+            row_label="Unknown",
+            column_label="Genome B",
+        )
+
+def test_genome_matrix_get_value_rejects_unknown_column_label():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"Unknown genome matrix label: Unknown\.",
+    ):
+        matrix.get_value(
+            row_label="Genome A",
+            column_label="Unknown",
+        )
+
+def test_genome_matrix_to_rows():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    assert matrix.to_rows() == [
+        {
+            "label": "Genome A",
+            "values": [0.0, 0.5],
+        },
+        {
+            "label": "Genome B",
+            "values": [0.5, 0.0],
+        },
+    ]
+
+def test_genome_matrix_to_rows_returns_copies():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    rows = matrix.to_rows()
+    rows[0]["values"][0] = 999.0
+
+    assert matrix.values[0][0] == pytest.approx(0.0)
+
+def test_genome_matrix_to_dict():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    assert matrix.to_dict() == {
+        "labels": ["Genome A", "Genome B"],
+        "values": [
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        "metric": "euclidean",
+        "kmer_length": 3,
+    }
+
+def test_genome_matrix_to_dict_returns_copies():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    matrix_dict = matrix.to_dict()
+
+    matrix_dict["labels"][0] = "Modified"
+    matrix_dict["values"][0][0] = 999.0
+
+    assert matrix.labels[0] == "Genome A"
+    assert matrix.values[0][0] == pytest.approx(0.0)
