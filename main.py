@@ -1,23 +1,44 @@
 from pathlib import Path
 
-from src.genome import Genome
+from src.genome import Genome, GenomeCollection
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
-GFP_FASTA_PATH = (
+AEQUOREA_GFP_PATH = (
     PROJECT_ROOT
     / "data"
     / "fluorescent_proteins"
     / "aequorea_victoria_gfp_cds.fasta"
 )
 
-COMPARISON_FASTA_PATH = (
+ACROPORA_GFP_PATH = (
     PROJECT_ROOT
     / "data"
     / "fluorescent_proteins"
     / "acropora_millepora_gfp_cds.fasta"
 )
+
+DISCOSOMA_FP583_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "fluorescent_proteins"
+    / "discosoma_fp583_cds.fasta"
+)
+
+PERIODIC_CONTROL_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "controls"
+    / "periodic_sequence.fasta"
+)
+
+GENOME_LABELS = [
+    "Aequorea GFP",
+    "Acropora GFP",
+    "Discosoma FP583",
+    "Periodic control",
+]
 
 DEFAULT_KMER_LENGTH = 3
 DEFAULT_KMER_LIMIT = 10
@@ -63,7 +84,10 @@ def print_kmer_frequencies(
 
     frequencies = genome.kmer_frequencies(k)
 
-    for index, (kmer, frequency) in enumerate(frequencies.items(), start=1):
+    for index, (kmer, frequency) in enumerate(
+        frequencies.items(),
+        start=1,
+    ):
         print(f"{kmer}: {frequency} times")
 
         if index == limit:
@@ -81,29 +105,89 @@ def print_genome_comparison(comparison):
         print(f"{feature_name}: {difference:.4f}")
 
 
+def print_matrix(
+    title: str,
+    labels: list[str],
+    matrix: list[list[float]],
+) -> None:
+    label_width = max(len(label) for label in labels)
+    value_width = 20
+
+    print(f"\n{title}:")
+
+    header = " " * (label_width + 2)
+
+    for label in labels:
+        header += f"{label:>{value_width}}"
+
+    print(header)
+
+    for label, row in zip(labels, matrix, strict=True):
+        formatted_values = "".join(
+            f"{value:>{value_width}.4f}"
+            for value in row
+        )
+
+        print(
+            f"{label:<{label_width}}  "
+            f"{formatted_values}"
+        )
+
+
 def main():
-    genome = Genome.from_fasta(GFP_FASTA_PATH)
-    descriptor = genome.descriptor(k=DEFAULT_KMER_LENGTH)
+    genomes = [
+        Genome.from_fasta(AEQUOREA_GFP_PATH),
+        Genome.from_fasta(ACROPORA_GFP_PATH),
+        Genome.from_fasta(DISCOSOMA_FP583_PATH),
+        Genome.from_fasta(PERIODIC_CONTROL_PATH),
+    ]
 
-    comparison_genome = Genome.from_fasta(COMPARISON_FASTA_PATH)
+    collection = GenomeCollection(genomes)
 
-    comparison_descriptor = comparison_genome.descriptor(
+    reference_genome = genomes[0]
+    reference_descriptor = reference_genome.descriptor(
         k=DEFAULT_KMER_LENGTH
     )
 
-    print_genome_summary(genome)
+    comparison_descriptor = genomes[1].descriptor(
+        k=DEFAULT_KMER_LENGTH
+    )
 
-    print_descriptor(descriptor)
-    print_descriptor_vectors(descriptor)
+    comparison = reference_descriptor.compare(
+        comparison_descriptor
+    )
 
-    comparison = descriptor.compare(comparison_descriptor)
+    print_genome_summary(reference_genome)
+    print_descriptor(reference_descriptor)
+    print_descriptor_vectors(reference_descriptor)
 
     print_kmer_frequencies(
-        genome,
+        reference_genome,
         k=DEFAULT_KMER_LENGTH,
         limit=DEFAULT_KMER_LIMIT,
     )
+
     print_genome_comparison(comparison)
+
+    euclidean_matrix = collection.euclidean_distance_matrix(
+        k=DEFAULT_KMER_LENGTH
+    )
+
+    cosine_matrix = collection.cosine_similarity_matrix(
+        k=DEFAULT_KMER_LENGTH
+    )
+
+    print_matrix(
+        title="Euclidean Distance Matrix",
+        labels=GENOME_LABELS,
+        matrix=euclidean_matrix,
+    )
+
+    print_matrix(
+        title="Cosine Similarity Matrix",
+        labels=GENOME_LABELS,
+        matrix=cosine_matrix,
+    )
 
 
 if __name__ == "__main__":

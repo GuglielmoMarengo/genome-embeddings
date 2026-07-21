@@ -19,17 +19,23 @@ Most genomic embeddings rely on neural networks trained on large biological data
 
 Genome Embeddings explores a complementary direction: representing genomic sequences through transparent, reproducible and explainable mathematical descriptors.
 
-The long-term goal is to build interpretable genome embeddings that can support downstream applications in:
+The long-term goal is to build interpretable genome and transcriptome embeddings that can support downstream applications in:
 
 * Bioinformatics
 * Computational biology
 * Comparative genomics
+* Transcriptomics
 * Genome comparison
 * Clustering
 * Classification
 * Anomaly detection
+* Biomarker research
 * Machine learning
 * Artificial intelligence
+
+The project is currently intended for research and software-development purposes.
+
+Potential future clinical or diagnostic applications would require extensive biological, statistical, clinical and regulatory validation.
 
 ---
 
@@ -65,6 +71,11 @@ Current capabilities include:
 * Comparison between real biological CDS sequences
 * Curated fluorescent-protein example dataset
 * Synthetic periodic control sequence
+* `GenomeCollection` for multiple sequences
+* Batch descriptor generation
+* Euclidean distance matrices
+* Cosine similarity matrices
+* Multi-genome comparison using real biological sequences
 
 ---
 
@@ -451,7 +462,7 @@ This makes each comparison interpretable by showing which mathematical propertie
 
 # GenomeComparison
 
-The `GenomeComparison` object groups all comparison results into one structured representation.
+The `GenomeComparison` object groups all pairwise comparison results into one structured representation.
 
 It is created with:
 
@@ -478,13 +489,111 @@ for feature_name, difference in comparison.sorted_feature_differences():
     print(f"{feature_name}: {difference:.4f}")
 ```
 
-This architecture keeps the comparison logic outside the presentation layer and allows comparison results to be reused by future matrix, ranking, export and visualization features.
+This architecture keeps comparison logic outside the presentation layer and allows comparison results to be reused by future matrix, ranking, export and visualization features.
+
+---
+
+# GenomeCollection
+
+The `GenomeCollection` class manages multiple validated `Genome` objects.
+
+A collection is created with:
+
+```python
+from src.genome import GenomeCollection
+
+collection = GenomeCollection(
+    [
+        first_genome,
+        second_genome,
+        third_genome,
+    ]
+)
+```
+
+The collection:
+
+* Rejects non-list input
+* Rejects empty collections
+* Rejects values that are not `Genome` objects
+* Preserves the original genome order
+* Generates descriptors for all genomes
+* Calculates Euclidean distance matrices
+* Calculates cosine similarity matrices
+
+Descriptors are generated with:
+
+```python
+descriptors = collection.descriptors(k=3)
+```
+
+The returned descriptors preserve the same order as `collection.genomes`.
+
+---
+
+# Multi-Genome Comparison
+
+A `GenomeCollection` can calculate pairwise metrics for every genome in the collection.
+
+## Euclidean Distance Matrix
+
+```python
+distance_matrix = collection.euclidean_distance_matrix(k=3)
+```
+
+The resulting matrix is:
+
+* Square
+* Symmetric
+* Ordered consistently with `collection.genomes`
+* Equal to `0.0` on the diagonal
+
+Example structure:
+
+```text
+                    Genome A   Genome B   Genome C
+Genome A              0.0000     0.1200     0.4500
+Genome B              0.1200     0.0000     0.3900
+Genome C              0.4500     0.3900     0.0000
+```
+
+---
+
+## Cosine Similarity Matrix
+
+```python
+similarity_matrix = collection.cosine_similarity_matrix(k=3)
+```
+
+The resulting matrix is:
+
+* Square
+* Symmetric
+* Ordered consistently with `collection.genomes`
+* Equal to `1.0` on the diagonal
+
+Example structure:
+
+```text
+                    Genome A   Genome B   Genome C
+Genome A              1.0000     0.9800     0.8100
+Genome B              0.9800     1.0000     0.8300
+Genome C              0.8100     0.8300     1.0000
+```
+
+The current implementation returns matrices as:
+
+```python
+list[list[float]]
+```
+
+A future `GenomeMatrix` object will provide structured metadata, labels and export functionality.
 
 ---
 
 # Real CDS-to-CDS Comparison
 
-The primary example compares two real fluorescent-protein coding sequences:
+The primary pairwise example compares two real fluorescent-protein coding sequences:
 
 * GFP CDS from *Aequorea victoria*
 * GFP CDS from *Acropora millepora*
@@ -526,50 +635,108 @@ They do not establish sequence identity or evolutionary relatedness.
 
 ---
 
+# Current Multi-Genome Result
+
+The demonstration program compares:
+
+* *Aequorea victoria* GFP CDS
+* *Acropora millepora* GFP CDS
+* *Discosoma* FP583 CDS
+* A synthetic periodic control sequence
+
+For `k = 3`, the Euclidean distance matrix is:
+
+```text
+                      Aequorea GFP   Acropora GFP   Discosoma FP583   Periodic control
+Aequorea GFP                 0.0000         0.0656            0.1102             1.1187
+Acropora GFP                 0.0656         0.0000            0.0795             1.1358
+Discosoma FP583              0.1102         0.0795            0.0000             1.1393
+Periodic control             1.1187         1.1358            1.1393             0.0000
+```
+
+The cosine similarity matrix is:
+
+```text
+                      Aequorea GFP   Acropora GFP   Discosoma FP583   Periodic control
+Aequorea GFP                 1.0000         0.9996            0.9990             0.8071
+Acropora GFP                 0.9996         1.0000            0.9993             0.8110
+Discosoma FP583              0.9990         0.9993            1.0000             0.8189
+Periodic control             0.8071         0.8110            0.8189             1.0000
+```
+
+Within the current descriptor space:
+
+* The three real fluorescent-protein CDS sequences form a compact group.
+* The synthetic periodic sequence is clearly separated.
+* The Euclidean distance provides stronger numerical separation than cosine similarity.
+* Cosine similarity remains very high between biological sequences because the current normalized descriptor dimensions are positive and relatively aggregated.
+
+These observations are preliminary and should not be interpreted as biological validation.
+
+The next validation step will require real non-fluorescent biological control sequences.
+
+---
+
 # Quick Example
 
 ```python
 from pathlib import Path
 
-from src.genome import Genome
+from src.genome import Genome, GenomeCollection
 
 
-DATA_DIR = Path("data") / "fluorescent_proteins"
+PROJECT_ROOT = Path(__file__).resolve().parent
 
-first_genome = Genome.from_fasta(
-    DATA_DIR / "aequorea_victoria_gfp_cds.fasta"
-)
+data_dir = PROJECT_ROOT / "data"
 
-second_genome = Genome.from_fasta(
-    DATA_DIR / "acropora_millepora_gfp_cds.fasta"
-)
+genomes = [
+    Genome.from_fasta(
+        data_dir
+        / "fluorescent_proteins"
+        / "aequorea_victoria_gfp_cds.fasta"
+    ),
+    Genome.from_fasta(
+        data_dir
+        / "fluorescent_proteins"
+        / "acropora_millepora_gfp_cds.fasta"
+    ),
+    Genome.from_fasta(
+        data_dir
+        / "fluorescent_proteins"
+        / "discosoma_fp583_cds.fasta"
+    ),
+    Genome.from_fasta(
+        data_dir
+        / "controls"
+        / "periodic_sequence.fasta"
+    ),
+]
 
-first_descriptor = first_genome.descriptor(k=3)
-second_descriptor = second_genome.descriptor(k=3)
+collection = GenomeCollection(genomes)
 
-comparison = first_descriptor.compare(second_descriptor)
+descriptors = collection.descriptors(k=3)
 
-print(f"First header: {first_genome.header}")
-print(f"Second header: {second_genome.header}")
+pairwise_comparison = descriptors[0].compare(descriptors[1])
 
-print(f"First sequence length: {first_descriptor.length} bp")
-print(f"First GC content: {first_descriptor.gc_content * 100:.2f}%")
 print(
-    f"First Shannon entropy: "
-    f"{first_descriptor.shannon_entropy:.4f} bits"
+    f"Euclidean distance: "
+    f"{pairwise_comparison.euclidean_distance:.4f}"
 )
-print(f"First k-mer diversity: {first_descriptor.kmer_diversity:.4f}")
-print(f"First k-mer entropy: {first_descriptor.kmer_entropy:.4f} bits")
+print(
+    f"Cosine similarity: "
+    f"{pairwise_comparison.cosine_similarity:.4f}"
+)
 
-print(first_descriptor.to_dict())
-print(first_descriptor.to_vector())
-print(first_descriptor.to_normalized_vector())
-
-print(f"Euclidean distance: {comparison.euclidean_distance:.4f}")
-print(f"Cosine similarity: {comparison.cosine_similarity:.4f}")
-
-for feature_name, difference in comparison.sorted_feature_differences():
+for feature_name, difference in (
+    pairwise_comparison.sorted_feature_differences()
+):
     print(f"{feature_name}: {difference:.4f}")
+
+euclidean_matrix = collection.euclidean_distance_matrix(k=3)
+cosine_matrix = collection.cosine_similarity_matrix(k=3)
+
+print(euclidean_matrix)
+print(cosine_matrix)
 ```
 
 ---
@@ -586,16 +753,21 @@ The program:
 
 1. Loads the GFP coding sequence from *Aequorea victoria*.
 2. Loads the GFP coding sequence from *Acropora millepora*.
-3. Generates a mathematical descriptor for each CDS.
-4. Prints basic information for the reference sequence.
-5. Prints its complete mathematical descriptor.
-6. Prints its raw descriptor vector.
-7. Prints its normalized descriptor vector.
-8. Displays the first observed k-mer frequencies.
-9. Creates a structured `GenomeComparison`.
-10. Calculates Euclidean distance.
-11. Calculates cosine similarity.
-12. Prints normalized feature differences in descending order.
+3. Loads the FP583 coding sequence from *Discosoma*.
+4. Loads the synthetic periodic control sequence.
+5. Creates a `GenomeCollection`.
+6. Generates a mathematical descriptor for the reference CDS.
+7. Prints basic sequence information.
+8. Prints the complete descriptor.
+9. Prints the raw descriptor vector.
+10. Prints the normalized descriptor vector.
+11. Displays the first observed k-mer frequencies.
+12. Creates a detailed pairwise `GenomeComparison`.
+13. Prints Euclidean distance and cosine similarity.
+14. Prints feature differences in descending order.
+15. Calculates a Euclidean distance matrix.
+16. Calculates a cosine similarity matrix.
+17. Prints both matrices with readable labels.
 
 ---
 
@@ -628,7 +800,7 @@ The program:
 * [x] Raw descriptor vector conversion
 * [x] Normalized descriptor vector conversion
 
-## Genome comparison
+## Pairwise genome comparison
 
 * [x] Descriptor normalization
 * [x] Euclidean distance
@@ -638,27 +810,58 @@ The program:
 * [x] GenomeComparison object
 * [x] Sorted feature differences
 * [x] Real CDS-to-CDS comparison
-* [x] Curated fluorescent-protein dataset
 
-## Future development
+## Multi-genome comparison
 
-* [ ] Multiple-genome comparison
-* [ ] GenomeCollection object
-* [ ] Euclidean distance matrix
-* [ ] Cosine similarity matrix
-* [ ] Genome embeddings
+* [x] GenomeCollection object
+* [x] Collection validation
+* [x] Batch descriptor generation
+* [x] Descriptor-order preservation
+* [x] Euclidean distance matrix
+* [x] Cosine similarity matrix
+* [x] Matrix symmetry validation
+* [x] Matrix diagonal validation
+* [x] Real multi-genome demonstration
+* [ ] GenomeMatrix object
+* [ ] Biological negative controls
 * [ ] Similarity ranking
 * [ ] Clustering
-* [ ] Multiple FASTA record support
-* [ ] Ambiguous nucleotide support
-* [ ] RNA support
+* [ ] Heatmap visualization
+
+## Future descriptors
+
+* [ ] Conditional entropy
+* [ ] Block entropy
+* [ ] Entropy rate
+* [ ] Jensen-Shannon divergence
+* [ ] Dinucleotide statistics
+* [ ] Codon usage descriptors
+* [ ] Local window descriptors
 * [ ] Graph-based descriptors
 * [ ] Spectral descriptors
 * [ ] Compression-based descriptors
-* [ ] Visualization tools
+* [ ] Fractal descriptors
+* [ ] Number-theoretic descriptors
+
+## Future platform development
+
+* [ ] Genome embeddings
+* [ ] Transcript embeddings
+* [ ] Transcriptomic sample embeddings
+* [ ] Multiple FASTA record support
+* [ ] Ambiguous nucleotide support
+* [ ] RNA support
+* [ ] Command-line interface
+* [ ] Package distribution
 * [ ] Descriptor export
 * [ ] Comparison export
+* [ ] Matrix export
 * [ ] Embedding export
+* [ ] Visualization tools
+* [ ] Parallel processing
+* [ ] Biological benchmark datasets
+* [ ] Statistical validation
+* [ ] External validation
 
 ---
 
@@ -677,6 +880,12 @@ The program:
 | k must be greater than zero                               | ✅          |
 | k cannot exceed the sequence length                       | ✅          |
 | Descriptor comparisons require another `GenomeDescriptor` | ✅          |
+| GenomeCollection input must be a list                     | ✅          |
+| GenomeCollection cannot be empty                          | ✅          |
+| GenomeCollection accepts only `Genome` objects            | ✅          |
+| Matrix order follows collection order                     | ✅          |
+| Euclidean matrix diagonal equals `0.0`                    | ✅          |
+| Cosine matrix diagonal equals `1.0`                       | ✅          |
 | Ambiguous nucleotide support                              | 🚧 Planned |
 | RNA support                                               | 🚧 Planned |
 
@@ -718,7 +927,7 @@ For more detailed output:
 python -m pytest -v
 ```
 
-The current test suite contains 39 tests and covers:
+The current test suite contains **54 tests** and covers:
 
 * Sequence validation
 * Sequence length
@@ -751,6 +960,21 @@ The current test suite contains 39 tests and covers:
 * GenomeComparison generation
 * GenomeComparison type validation
 * Sorted feature differences
+* GenomeCollection creation
+* GenomeCollection input validation
+* Empty collection validation
+* Collection item validation
+* Batch descriptor generation
+* Descriptor-order preservation
+* Invalid collection k-mer length handling
+* Euclidean distance matrix shape
+* Euclidean distance matrix diagonal
+* Euclidean distance matrix symmetry
+* Euclidean matrix pairwise consistency
+* Cosine similarity matrix shape
+* Cosine similarity matrix diagonal
+* Cosine similarity matrix symmetry
+* Cosine matrix pairwise consistency
 
 ---
 
@@ -782,7 +1006,7 @@ genome-embeddings/
 
 # Architecture
 
-The project currently separates sequence analysis into four responsibilities.
+The project currently separates sequence analysis into five responsibilities.
 
 ## Genome
 
@@ -817,48 +1041,73 @@ The `GenomeComparison` class:
 * Stores normalized feature differences
 * Sorts feature differences from largest to smallest
 
+## GenomeCollection
+
+The `GenomeCollection` class:
+
+* Stores multiple validated `Genome` objects
+* Preserves genome order
+* Generates descriptors for every genome
+* Calculates Euclidean distance matrices
+* Calculates cosine similarity matrices
+
 ## main.py
 
 The demonstration program:
 
-* Loads two real fluorescent-protein CDS records
-* Coordinates descriptor generation
-* Presents raw and normalized vectors
-* Creates a structured comparison
-* Displays distance and similarity
-* Displays feature-level explanations
+* Loads three real fluorescent-protein CDS records
+* Loads one synthetic periodic control
+* Creates a `GenomeCollection`
+* Presents a detailed pairwise comparison
+* Generates multi-genome distance and similarity matrices
+* Prints matrices with readable labels
 
 The resulting architecture is:
 
 ```text
-FASTA sequence
-      │
-      ▼
-    Genome
-      │
-      ├── Individual descriptor methods
-      │
-      ▼
- descriptor(k)
-      │
-      ▼
+FASTA sequences
+       │
+       ▼
+     Genome
+       │
+       ├── Individual descriptor methods
+       │
+       ▼
+  descriptor(k)
+       │
+       ▼
 GenomeDescriptor
-      │
-      ├── to_dict()
-      ├── to_vector()
-      ├── to_normalized_vector()
-      ├── euclidean_distance()
-      ├── cosine_similarity()
-      ├── feature_differences()
-      └── compare()
-               │
-               ▼
-       GenomeComparison
-               │
-               └── sorted_feature_differences()
+       │
+       ├── to_dict()
+       ├── to_vector()
+       ├── to_normalized_vector()
+       ├── euclidean_distance()
+       ├── cosine_similarity()
+       ├── feature_differences()
+       └── compare()
+                │
+                ▼
+        GenomeComparison
+                │
+                └── sorted_feature_differences()
+
+Multiple Genome objects
+       │
+       ▼
+GenomeCollection
+       │
+       ├── descriptors(k)
+       ├── euclidean_distance_matrix(k)
+       └── cosine_similarity_matrix(k)
 ```
 
-The next architectural step will introduce a collection abstraction for comparing more than two genomes.
+The next architectural step will introduce a structured `GenomeMatrix` object containing:
+
+* Matrix values
+* Genome labels
+* Metric name
+* k-mer length
+* Future export functionality
 
 ---
 
@@ -868,9 +1117,9 @@ Most genomic embedding systems rely on complex neural networks trained on massiv
 
 Those models can be powerful, but their internal representations are often difficult to interpret.
 
-Genome Embeddings explores a different approach: describing genomic sequences through mathematical properties whose meaning remains explicit.
+Genome Embeddings explores a different approach: describing genomic and transcriptomic sequences through mathematical properties whose meaning remains explicit.
 
-Rather than treating DNA as raw text, the project treats a genomic sequence as a mathematical object whose properties can be:
+Rather than treating DNA or RNA as raw text, the project treats biological sequences as mathematical objects whose properties can be:
 
 * Measured
 * Interpreted
@@ -878,11 +1127,13 @@ Rather than treating DNA as raw text, the project treats a genomic sequence as a
 * Explained
 * Visualized
 * Converted into vectors
+* Integrated with statistical models
 * Integrated with machine-learning systems
 
 The project emphasizes:
 
 * Mathematical interpretability
+* Biological interpretability
 * Reproducibility
 * Explainable descriptors
 * Explainable comparisons
@@ -892,6 +1143,10 @@ The project emphasizes:
 * Comparisons between equivalent biological regions
 * Extensibility
 * Compatibility with future machine-learning applications
+
+The central research question is:
+
+> Can interpretable mathematical descriptors produce biologically meaningful, robust and reusable embeddings of genomic and transcriptomic data?
 
 ---
 
@@ -938,7 +1193,7 @@ This file is retained as a reference record but is not used for the primary CDS-
 * **Location:** 1..696
 * **Sequence length:** 696 nt
 
-This CDS is used as the comparison sequence in `main.py`.
+This CDS is used as the primary pairwise comparison sequence in `main.py`.
 
 ---
 
@@ -952,7 +1207,7 @@ This CDS is used as the comparison sequence in `main.py`.
 * **Location:** 54..731
 * **Sequence length:** 678 nt
 
-This sequence is included for future multiple-genome comparison and distance-matrix analysis.
+This CDS is included in the multi-genome distance and similarity matrices.
 
 ---
 
@@ -970,21 +1225,21 @@ The current control contains 120 nucleotides.
 
 It is retained as a methodological control for evaluating how descriptors respond to highly periodic local sequence organization.
 
-The synthetic sequence is not used as the primary biological comparison.
+The synthetic sequence is included in the multi-genome matrices but is not treated as a biological reference.
 
 ---
 
 # Dataset Design
 
-The primary demonstration compares equivalent coding regions:
+The biological comparisons use equivalent coding regions:
 
 ```text
 Aequorea victoria GFP CDS
-             versus
 Acropora millepora GFP CDS
+Discosoma FP583 CDS
 ```
 
-This is more rigorous than comparing a complete mRNA against a CDS because untranslated regions could affect:
+This is more rigorous than mixing complete mRNA and CDS records because untranslated regions could affect:
 
 * GC content
 * Nucleotide entropy
@@ -994,13 +1249,25 @@ This is more rigorous than comparing a complete mRNA against a CDS because untra
 
 The retained complete mRNA record remains useful for future experiments exploring how genomic region selection affects mathematical descriptors.
 
+The current dataset is intentionally small and exploratory.
+
+Future validation will require:
+
+* Non-fluorescent biological controls
+* Unrelated CDS sequences
+* Homologous and non-homologous sequence sets
+* Larger gene families
+* Taxonomically diverse datasets
+* Perturbed and synthetic benchmark sequences
+* Independent biological annotations
+
 ---
 
 # Long-Term Vision
 
-The project is divided conceptually into three phases.
+The project is divided conceptually into six phases.
 
-## Phase 1: Mathematical descriptors
+## Phase 1: Core mathematical representation
 
 The first phase builds reusable and interpretable measurements of genomic sequences.
 
@@ -1011,14 +1278,7 @@ Current examples include:
 * Sequence imbalance
 * k-mer diversity
 * k-mer entropy
-
-Future examples may include:
-
-* Graph-based descriptors
-* Spectral descriptors
-* Compression-based descriptors
-* Fractal descriptors
-* Additional information-theoretic descriptors
+* Normalized descriptor vectors
 
 ## Phase 2: Explainable genome comparison
 
@@ -1026,39 +1286,72 @@ The second phase compares descriptor vectors through mathematical metrics.
 
 Current capabilities include:
 
-* Descriptor normalization
 * Euclidean distance
 * Cosine similarity
 * Feature-level difference analysis
-* Structured comparison objects
+* Structured pairwise comparison objects
 * Real CDS-to-CDS comparison
+* Multi-genome distance matrices
+* Multi-genome similarity matrices
 
-Future comparison capabilities will include:
+## Phase 3: Advanced mathematical descriptors
 
-* Multiple-genome comparison
-* Distance matrices
-* Similarity matrices
+Future descriptor families may include:
+
+* Conditional entropy
+* Block entropy
+* Entropy rate
+* Mutual information
+* Jensen-Shannon divergence
+* Graph-based descriptors
+* Spectral descriptors
+* Compression-based descriptors
+* Fractal descriptors
+* Number-theoretic descriptors
+* Local and multiscale descriptors
+
+## Phase 4: Dataset-scale analysis
+
+This phase will include:
+
+* Structured matrix objects
+* Matrix export
 * Similarity ranking
 * Clustering
-* Visualization
-* Comparison export
+* Heatmaps
+* Dimensionality reduction
+* Batch processing
+* Parallel execution
+* Benchmark datasets
 
-## Phase 3: Genome embeddings
+## Phase 5: Transcriptomics
 
-The third phase combines mathematical descriptors into reusable vector representations.
+This phase may introduce:
 
-These embeddings will support:
+* Transcript embeddings
+* Isoform embeddings
+* Expression-weighted embeddings
+* Sample-level transcriptomic representations
+* Co-expression graph descriptors
+* Transcriptomic clustering
+* Differential representation analysis
 
-* Genome similarity analysis
-* Distance calculations
-* Clustering
-* Classification
-* Anomaly detection
-* Comparative genomics
-* Machine-learning pipelines
-* Artificial-intelligence applications
+## Phase 6: Biological and translational validation
 
-The goal is not to replace deep-learning approaches, but to complement them with transparent and explainable mathematical representations.
+This phase will require:
+
+* Biological benchmarks
+* Statistical validation
+* Ablation studies
+* Robustness analysis
+* External validation datasets
+* Clinical research cohorts
+* Uncertainty estimation
+* Reproducible pipelines
+* Auditability
+* Domain-expert review
+
+Any potential clinical or diagnostic application would require substantially more validation than the research-oriented functionality currently implemented.
 
 ---
 

@@ -2,8 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from src.genome import Genome, GenomeComparison, GenomeDescriptor
-
+from src.genome import (
+    Genome,
+    GenomeCollection,
+    GenomeComparison,
+    GenomeDescriptor,
+)
 
 TEST_DATA_DIR = Path(__file__).parent / "data"
 
@@ -261,3 +265,208 @@ def test_sorted_feature_differences_are_descending():
     values = [value for _, value in sorted_differences]
 
     assert values == sorted(values, reverse=True)
+
+def test_genome_collection_stores_genomes():
+    genomes = [
+        make_genome("ACGTACGT"),
+        make_genome("AAAAAAAA"),
+    ]
+
+    collection = GenomeCollection(genomes)
+
+    assert collection.genomes == genomes
+
+def test_genome_collection_rejects_empty_collection():
+    with pytest.raises(
+        ValueError,
+        match="Genome collection cannot be empty.",
+    ):
+        GenomeCollection([])
+
+def test_genome_collection_rejects_non_list_input():
+    with pytest.raises(
+        TypeError,
+        match="genomes must be a list of Genome objects.",
+    ):
+        GenomeCollection("invalid")
+
+def test_genome_collection_rejects_invalid_items():
+    genomes = [
+        make_genome("ACGTACGT"),
+        "invalid",
+    ]
+
+    with pytest.raises(
+        TypeError,
+        match="All items must be Genome objects.",
+    ):
+        GenomeCollection(genomes)
+
+def test_genome_collection_generates_descriptors():
+    genomes = [
+        make_genome("ACGTACGT"),
+        make_genome("AAAAAAAA"),
+    ]
+    collection = GenomeCollection(genomes)
+
+    descriptors = collection.descriptors(k=3)
+
+    assert len(descriptors) == 2
+    assert all(
+        isinstance(descriptor, GenomeDescriptor)
+        for descriptor in descriptors
+    )
+
+def test_genome_collection_preserves_descriptor_order():
+    first_genome = make_genome("ACGTACGT")
+    second_genome = make_genome("AAAAAAAA")
+
+    collection = GenomeCollection(
+        [first_genome, second_genome]
+    )
+
+    descriptors = collection.descriptors(k=3)
+
+    assert descriptors[0] == first_genome.descriptor(k=3)
+    assert descriptors[1] == second_genome.descriptor(k=3)
+
+def test_genome_collection_descriptors_reject_invalid_k():
+    collection = GenomeCollection(
+        [make_genome("ACGTACGT")]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"k must be positive\. Got 0\.",
+    ):
+        collection.descriptors(k=0)
+
+def test_euclidean_distance_matrix_has_correct_shape():
+    collection = GenomeCollection(
+        [
+            make_genome("ACGTACGT"),
+            make_genome("AAAAAAAA"),
+            make_genome("CCCCCCCC"),
+        ]
+    )
+
+    matrix = collection.euclidean_distance_matrix(k=3)
+
+    assert len(matrix) == 3
+    assert all(len(row) == 3 for row in matrix)
+
+def test_euclidean_distance_matrix_has_zero_diagonal():
+    collection = GenomeCollection(
+        [
+            make_genome("ACGTACGT"),
+            make_genome("AAAAAAAA"),
+            make_genome("CCCCCCCC"),
+        ]
+    )
+
+    matrix = collection.euclidean_distance_matrix(k=3)
+
+    assert matrix[0][0] == pytest.approx(0.0)
+    assert matrix[1][1] == pytest.approx(0.0)
+    assert matrix[2][2] == pytest.approx(0.0)
+
+def test_euclidean_distance_matrix_is_symmetric():
+    collection = GenomeCollection(
+        [
+            make_genome("ACGTACGT"),
+            make_genome("AAAAAAAA"),
+            make_genome("CCCCCCCC"),
+        ]
+    )
+
+    matrix = collection.euclidean_distance_matrix(k=3)
+
+    for row_index in range(len(matrix)):
+        for column_index in range(len(matrix)):
+            assert matrix[row_index][column_index] == pytest.approx(
+                matrix[column_index][row_index]
+            )
+
+def test_euclidean_distance_matrix_matches_descriptor_distance():
+    first_genome = make_genome("ACGTACGT")
+    second_genome = make_genome("AAAAAAAA")
+
+    collection = GenomeCollection(
+        [first_genome, second_genome]
+    )
+
+    matrix = collection.euclidean_distance_matrix(k=3)
+
+    expected_distance = (
+        first_genome
+        .descriptor(k=3)
+        .euclidean_distance(second_genome.descriptor(k=3))
+    )
+
+    assert matrix[0][1] == pytest.approx(expected_distance)
+    assert matrix[1][0] == pytest.approx(expected_distance)
+
+def test_cosine_similarity_matrix_has_correct_shape():
+    collection = GenomeCollection(
+        [
+            make_genome("ACGTACGT"),
+            make_genome("AAAAAAAA"),
+            make_genome("CCCCCCCC"),
+        ]
+    )
+
+    matrix = collection.cosine_similarity_matrix(k=3)
+
+    assert len(matrix) == 3
+    assert all(len(row) == 3 for row in matrix)
+
+def test_cosine_similarity_matrix_has_one_diagonal():
+    collection = GenomeCollection(
+        [
+            make_genome("ACGTACGT"),
+            make_genome("AAAAAAAA"),
+            make_genome("CCCCCCCC"),
+        ]
+    )
+
+    matrix = collection.cosine_similarity_matrix(k=3)
+
+    assert matrix[0][0] == pytest.approx(1.0)
+    assert matrix[1][1] == pytest.approx(1.0)
+    assert matrix[2][2] == pytest.approx(1.0)
+
+def test_cosine_similarity_matrix_is_symmetric():
+    collection = GenomeCollection(
+        [
+            make_genome("ACGTACGT"),
+            make_genome("AAAAAAAA"),
+            make_genome("CCCCCCCC"),
+        ]
+    )
+
+    matrix = collection.cosine_similarity_matrix(k=3)
+
+    for row_index in range(len(matrix)):
+        for column_index in range(len(matrix)):
+            assert matrix[row_index][column_index] == pytest.approx(
+                matrix[column_index][row_index]
+            )
+
+def test_cosine_similarity_matrix_matches_descriptor_similarity():
+    first_genome = make_genome("ACGTACGT")
+    second_genome = make_genome("AAAAAAAA")
+
+    collection = GenomeCollection(
+        [first_genome, second_genome]
+    )
+
+    matrix = collection.cosine_similarity_matrix(k=3)
+
+    expected_similarity = (
+        first_genome
+        .descriptor(k=3)
+        .cosine_similarity(second_genome.descriptor(k=3))
+    )
+
+    assert matrix[0][1] == pytest.approx(expected_similarity)
+    assert matrix[1][0] == pytest.approx(expected_similarity)

@@ -146,6 +146,63 @@ class GenomeComparison:
             reverse=True,
         )
 
+class GenomeCollection:
+    def __init__(self, genomes: list["Genome"]) -> None:
+        if not isinstance(genomes, list):
+            raise TypeError(
+                "genomes must be a list of Genome objects."
+            )
+
+        if not genomes:
+            raise ValueError(
+                "Genome collection cannot be empty."
+            )
+
+        if not all(isinstance(genome, Genome) for genome in genomes):
+            raise TypeError(
+                "All items must be Genome objects."
+            )
+
+        self.genomes = genomes
+    
+    def descriptors(self, k: int) -> list[GenomeDescriptor]:
+        return [
+            genome.descriptor(k=k)
+            for genome in self.genomes
+        ]
+    
+    def euclidean_distance_matrix(
+        self,
+        k: int,
+    ) -> list[list[float]]:
+        descriptors = self.descriptors(k=k)
+        matrix: list[list[float]] = []
+
+        for first_descriptor in descriptors:
+            row = [
+                first_descriptor.euclidean_distance(second_descriptor)
+                for second_descriptor in descriptors
+            ]
+            matrix.append(row)
+
+        return matrix
+    
+    def cosine_similarity_matrix(
+        self,
+        k: int,
+    ) -> list[list[float]]:
+        descriptors = self.descriptors(k=k)
+        matrix: list[list[float]] = []
+
+        for first_descriptor in descriptors:
+            row = [
+                first_descriptor.cosine_similarity(second_descriptor)
+                for second_descriptor in descriptors
+            ]
+            matrix.append(row)
+
+        return matrix
+
 class Genome:
     VALID_NUCLEOTIDES = {"A", "C", "G", "T"}
     GC_BASES = {"C", "G"}
