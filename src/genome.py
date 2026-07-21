@@ -147,43 +147,70 @@ class Genome:
         return self._entropy_from_frequencies(frequencies, total)
 
     def descriptor(self, k=3):
-        self.validate_string("k", k) if False else None  # keeps the structure obvious; not used
-        if type(k) != int:
-            raise TypeError(f"k must be an integer, got {type(k).__name__}.")
-        if k <= 0:
-            raise ValueError(f"k must be positive. Got {k}.")
-        if k > self.length():
-            raise ValueError(f"k cannot exceed the sequence length. Got {k}.")
-
-        nucleotide_frequencies = self.nucleotide_frequencies()
-        total = self.length()
-
-        a_count = nucleotide_frequencies.get("A", 0)
-        c_count = nucleotide_frequencies.get("C", 0)
-        g_count = nucleotide_frequencies.get("G", 0)
-        t_count = nucleotide_frequencies.get("T", 0)
-
-        gc_content = self.gc_content()
-        at_content = 1.0 - gc_content
-        gc_skew = ((g_count - c_count) / (g_count + c_count)) if (g_count + c_count) else 0.0
-        purine_content = (a_count + g_count) / total
-        pyrimidine_content = (c_count + t_count) / total
-
-        kmer_frequencies = self.kmer_frequencies(k)
-        total_kmers = total - k + 1
-        distinct_kmers = len(kmer_frequencies)
-        kmer_diversity = distinct_kmers / total_kmers if total_kmers else 0.0
-        kmer_entropy = self._entropy_from_frequencies(kmer_frequencies, total_kmers) if total_kmers else 0.0
-
         return GenomeDescriptor(
-            length=total,
-            gc_content=gc_content,
-            at_content=at_content,
+            length=self.length(),
+            gc_content=self.gc_content(),
+            at_content=self.at_content(),
             shannon_entropy=self.shannon_entropy(),
-            gc_skew=gc_skew,
-            purine_content=purine_content,
-            pyrimidine_content=pyrimidine_content,
+            gc_skew=self.gc_skew(),
+            purine_content=self.purine_content(),
+            pyrimidine_content=self.pyrimidine_content(),
             kmer_length=k,
-            kmer_diversity=kmer_diversity,
-            kmer_entropy=kmer_entropy,
+            kmer_diversity=self.kmer_diversity(k),
+            kmer_entropy=self.kmer_entropy(k),
         )
+    
+    def at_content(self):
+        return 1.0 - self.gc_content()
+    
+    def gc_skew(self):
+        frequencies = self.nucleotide_frequencies()
+
+        g_count = frequencies.get("G", 0)
+        c_count = frequencies.get("C", 0)
+        total_gc = g_count + c_count
+
+        if total_gc == 0:
+            return 0.0
+
+        return (g_count - c_count) / total_gc
+    
+    def purine_content(self):
+        frequencies = self.nucleotide_frequencies()
+
+        a_count = frequencies.get("A", 0)
+        g_count = frequencies.get("G", 0)
+
+        return (a_count + g_count) / self.length()
+    
+    def pyrimidine_content(self):
+        frequencies = self.nucleotide_frequencies()
+
+        c_count = frequencies.get("C", 0)
+        t_count = frequencies.get("T", 0)
+
+        return (c_count + t_count) / self.length()
+    
+    def kmer_diversity(self, k):
+        frequencies = self.kmer_frequencies(k)
+
+        distinct_kmers = len(frequencies)
+        total_kmers = len(self.kmers(k))
+
+        return distinct_kmers / total_kmers
+    
+    def kmer_entropy(self, k):
+        frequencies = self.kmer_frequencies(k)
+        total_kmers = len(self.kmers(k))
+
+        return self._entropy_from_frequencies(frequencies, total_kmers)
+    
+    @staticmethod
+    def _entropy_from_frequencies(frequencies, total):
+        entropy = 0.0
+
+        for frequency in frequencies.values():
+            probability = frequency / total
+            entropy -= probability * math.log2(probability)
+
+        return entropy

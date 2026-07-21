@@ -101,3 +101,46 @@ def test_descriptor():
     assert descriptor.to_vector() == pytest.approx(
         [8.0, 0.5, 0.5, 2.0, 0.0, 0.5, 0.5, 3.0, 4 / 6, 1.9182958340544896]
     )
+
+def test_at_content():
+    assert make_genome("ACGTACGT").at_content() == 0.5
+
+def test_gc_skew():
+    assert make_genome("GGGC").gc_skew() == pytest.approx(0.5)
+
+def test_gc_skew_without_gc_bases():
+    assert make_genome("AAAA").gc_skew() == pytest.approx(0.0)
+
+def test_purine_content():
+    assert make_genome("AAGC").purine_content() == pytest.approx(0.75)
+
+def test_pyrimidine_content():
+    assert make_genome("ACTT").pyrimidine_content() == pytest.approx(0.75)
+
+def test_purine_and_pyrimidine_content_sum_to_one():
+    genome = make_genome("ACGTACGT")
+
+    assert (
+        genome.purine_content() + genome.pyrimidine_content()
+        == pytest.approx(1.0)
+    )
+
+def test_kmer_diversity():
+    genome = make_genome("ACGTAC")
+
+    assert genome.kmer_diversity(3) == pytest.approx(1.0)
+
+def test_kmer_diversity_with_repeated_kmers():
+    genome = make_genome("AAAAA")
+
+    assert genome.kmer_diversity(2) == pytest.approx(0.25)
+
+def test_kmer_entropy_uniform_distribution():
+    genome = make_genome("ACGTAC")
+
+    assert genome.kmer_entropy(3) == pytest.approx(2.0)
+
+def test_kmer_entropy_single_kmer():
+    genome = make_genome("AAAAA")
+
+    assert genome.kmer_entropy(2) == pytest.approx(0.0)
