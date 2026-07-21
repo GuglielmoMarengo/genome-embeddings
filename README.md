@@ -1,4 +1,3 @@
-````markdown
 # Genome Embeddings
 
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue)](https://www.python.org/)
@@ -869,4 +868,3 @@ The goal is not to replace deep-learning approaches, but to complement them with
 This project is released under the MIT License.
 
 See the [LICENSE](LICENSE) file for details.
-````
