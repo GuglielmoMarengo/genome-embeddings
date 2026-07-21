@@ -4,10 +4,20 @@ from src.genome import Genome
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-GFP_FASTA_PATH = PROJECT_ROOT / "data" / "gfp.fasta"
 
-COMPARISON_SEQUENCE = "ACGT" * 230 + "AC"
-COMPARISON_HEADER = ">Synthetic balanced comparison sequence"
+GFP_FASTA_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "fluorescent_proteins"
+    / "aequorea_victoria_gfp_cds.fasta"
+)
+
+COMPARISON_FASTA_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "fluorescent_proteins"
+    / "acropora_millepora_gfp_cds.fasta"
+)
 
 DEFAULT_KMER_LENGTH = 3
 DEFAULT_KMER_LIMIT = 10
@@ -75,10 +85,8 @@ def main():
     genome = Genome.from_fasta(GFP_FASTA_PATH)
     descriptor = genome.descriptor(k=DEFAULT_KMER_LENGTH)
 
-    comparison_genome = Genome(
-        sequence=COMPARISON_SEQUENCE,
-        header=COMPARISON_HEADER,
-    )
+    comparison_genome = Genome.from_fasta(COMPARISON_FASTA_PATH)
+
     comparison_descriptor = comparison_genome.descriptor(
         k=DEFAULT_KMER_LENGTH
     )

@@ -17,18 +17,19 @@ Rather than relying solely on machine learning, the project explores genomic rep
 
 Most genomic embeddings rely on neural networks trained on large biological datasets.
 
-Genome Embeddings explores a complementary direction: representing genomic sequences through transparent and reproducible mathematical descriptors.
+Genome Embeddings explores a complementary direction: representing genomic sequences through transparent, reproducible and explainable mathematical descriptors.
 
 The long-term goal is to build interpretable genome embeddings that can support downstream applications in:
 
-- Bioinformatics
-- Computational biology
-- Genome comparison
-- Clustering
-- Classification
-- Anomaly detection
-- Machine learning
-- Artificial intelligence
+* Bioinformatics
+* Computational biology
+* Comparative genomics
+* Genome comparison
+* Clustering
+* Classification
+* Anomaly detection
+* Machine learning
+* Artificial intelligence
 
 ---
 
@@ -36,29 +37,34 @@ The long-term goal is to build interpretable genome embeddings that can support 
 
 Current capabilities include:
 
-- FASTA parsing
-- DNA sequence validation
-- Automatic uppercase normalization
-- Sequence length calculation
-- GC content
-- AT content
-- Reverse complement
-- Nucleotide frequency analysis
-- Shannon entropy
-- GC skew
-- Purine content
-- Pyrimidine content
-- k-mer extraction
-- k-mer frequency analysis
-- Normalized k-mer diversity
-- k-mer entropy
-- Genome descriptor generation
-- Descriptor dictionary conversion
-- Raw descriptor vector conversion
-- Normalized descriptor vector conversion
-- Euclidean distance between genome descriptors
-- Cosine similarity between genome descriptors
-- Feature-level comparison and interpretation
+* FASTA parsing
+* DNA sequence validation
+* Automatic uppercase normalization
+* Sequence length calculation
+* GC content
+* AT content
+* Reverse complement
+* Nucleotide frequency analysis
+* Shannon entropy
+* GC skew
+* Purine content
+* Pyrimidine content
+* k-mer extraction
+* k-mer frequency analysis
+* Normalized k-mer diversity
+* k-mer entropy
+* Genome descriptor generation
+* Descriptor dictionary conversion
+* Raw descriptor vector conversion
+* Normalized descriptor vector conversion
+* Euclidean distance between genome descriptors
+* Cosine similarity between genome descriptors
+* Feature-level comparison and interpretation
+* Structured `GenomeComparison` results
+* Sorted feature differences
+* Comparison between real biological CDS sequences
+* Curated fluorescent-protein example dataset
+* Synthetic periodic control sequence
 
 ---
 
@@ -80,14 +86,18 @@ The class validates and normalizes the sequence when the object is created.
 A genome can also be loaded directly from a FASTA file:
 
 ```python
-genome = Genome.from_fasta("data/gfp.fasta")
+genome = Genome.from_fasta(
+    "data/fluorescent_proteins/aequorea_victoria_gfp_cds.fasta"
+)
 ```
+
+The current FASTA parser reads a single FASTA record, preserves its header and concatenates multiline sequence content.
 
 ---
 
 # Mathematical Descriptors
 
-The `Genome` class exposes individual descriptor methods that can be calculated and tested independently.
+The `Genome` class exposes individual descriptor methods that can be calculated and tested independently:
 
 ```python
 genome.length()
@@ -98,6 +108,8 @@ genome.shannon_entropy()
 genome.gc_skew()
 genome.purine_content()
 genome.pyrimidine_content()
+genome.kmers(k=3)
+genome.kmer_frequencies(k=3)
 genome.kmer_diversity(k=3)
 genome.kmer_entropy(k=3)
 ```
@@ -118,16 +130,16 @@ descriptor = genome.descriptor(k=3)
 
 The current descriptor contains:
 
-- `length`
-- `gc_content`
-- `at_content`
-- `shannon_entropy`
-- `gc_skew`
-- `purine_content`
-- `pyrimidine_content`
-- `kmer_length`
-- `kmer_diversity`
-- `kmer_entropy`
+* `length`
+* `gc_content`
+* `at_content`
+* `shannon_entropy`
+* `gc_skew`
+* `purine_content`
+* `pyrimidine_content`
+* `kmer_length`
+* `kmer_diversity`
+* `kmer_entropy`
 
 The descriptor can be converted into a dictionary:
 
@@ -151,14 +163,14 @@ The normalized vector excludes fields that are redundant, scale-dependent or con
 
 It currently contains:
 
-- GC content
-- Normalized Shannon entropy
-- Normalized GC skew
-- Purine content
-- k-mer diversity
-- Normalized k-mer entropy
+* GC content
+* Normalized Shannon entropy
+* Normalized GC skew
+* Purine content
+* k-mer diversity
+* Normalized k-mer entropy
 
-This normalized vector is the mathematical foundation for genome comparison and future embedding construction.
+This normalized six-dimensional vector is the mathematical foundation for genome comparison and future embedding construction.
 
 ---
 
@@ -332,7 +344,7 @@ For normalized comparison:
 normalized k-mer entropy = k-mer entropy / (2k)
 ```
 
-This descriptor captures sequence organization that cannot be detected through nucleotide frequencies alone.
+This descriptor captures local sequence organization that cannot be detected through nucleotide frequencies alone.
 
 ---
 
@@ -400,9 +412,15 @@ Cosine similarity is symmetric:
 similarity(A, B) = similarity(B, A)
 ```
 
-Cosine similarity should not be interpreted directly as a percentage of biological similarity.
+Cosine similarity must not be interpreted directly as a percentage of:
 
-It describes similarity only within the mathematical feature space currently implemented by the project.
+* Biological identity
+* Sequence identity
+* Protein identity
+* Evolutionary relatedness
+* Alignment similarity
+
+It describes similarity only within the mathematical descriptor space currently implemented by the project.
 
 ---
 
@@ -414,82 +432,143 @@ A comparison can be explained feature by feature with:
 differences = first_descriptor.feature_differences(second_descriptor)
 ```
 
-The method returns the absolute difference between corresponding normalized features.
-
-Example:
+The method returns the absolute difference between corresponding normalized features:
 
 ```python
 {
-    "gc_content": 0.1377,
-    "normalized_shannon_entropy": 0.0299,
-    "normalized_gc_skew": 0.0101,
-    "purine_content": 0.0336,
-    "kmer_diversity": 0.9219,
-    "normalized_kmer_entropy": 0.6193,
+    "gc_content": 0.0590,
+    "normalized_shannon_entropy": 0.0160,
+    "normalized_gc_skew": 0.0047,
+    "purine_content": 0.0052,
+    "kmer_diversity": 0.0156,
+    "normalized_kmer_entropy": 0.0164,
 }
 ```
 
 This makes each comparison interpretable by showing which mathematical properties distinguish the two sequences most strongly.
 
-For example, a comparison between the included GFP sequence and a balanced periodic synthetic sequence shows that most of the separation is caused by:
+---
 
-- k-mer diversity
-- Normalized k-mer entropy
+# GenomeComparison
 
-This indicates that local sequence organization differs much more strongly than overall nucleotide composition.
+The `GenomeComparison` object groups all comparison results into one structured representation.
+
+It is created with:
+
+```python
+comparison = first_descriptor.compare(second_descriptor)
+```
+
+The object contains:
+
+* `euclidean_distance`
+* `cosine_similarity`
+* `feature_differences`
+
+Feature differences can be sorted from the largest to the smallest contribution:
+
+```python
+comparison.sorted_feature_differences()
+```
+
+Example:
+
+```python
+for feature_name, difference in comparison.sorted_feature_differences():
+    print(f"{feature_name}: {difference:.4f}")
+```
+
+This architecture keeps the comparison logic outside the presentation layer and allows comparison results to be reused by future matrix, ranking, export and visualization features.
+
+---
+
+# Real CDS-to-CDS Comparison
+
+The primary example compares two real fluorescent-protein coding sequences:
+
+* GFP CDS from *Aequorea victoria*
+* GFP CDS from *Acropora millepora*
+
+Using equivalent biological regions is important.
+
+The project therefore compares:
+
+```text
+CDS versus CDS
+```
+
+rather than:
+
+```text
+complete mRNA versus CDS
+```
+
+This reduces differences caused solely by untranslated regions and makes the descriptor comparison more coherent.
+
+Current example result for `k = 3`:
+
+```text
+Euclidean distance: 0.0656
+Cosine similarity: 0.9996
+
+Feature Differences:
+gc_content: 0.0590
+normalized_kmer_entropy: 0.0164
+normalized_shannon_entropy: 0.0160
+kmer_diversity: 0.0156
+purine_content: 0.0052
+normalized_gc_skew: 0.0047
+```
+
+These values indicate that the two coding sequences have highly similar profiles within the current six-dimensional descriptor space.
+
+They do not establish sequence identity or evolutionary relatedness.
 
 ---
 
 # Quick Example
 
 ```python
+from pathlib import Path
+
 from src.genome import Genome
 
-first_genome = Genome.from_fasta("data/gfp.fasta")
-second_genome = Genome(
-    sequence="ACGT" * 230 + "AC",
-    header=">Synthetic balanced comparison sequence",
+
+DATA_DIR = Path("data") / "fluorescent_proteins"
+
+first_genome = Genome.from_fasta(
+    DATA_DIR / "aequorea_victoria_gfp_cds.fasta"
+)
+
+second_genome = Genome.from_fasta(
+    DATA_DIR / "acropora_millepora_gfp_cds.fasta"
 )
 
 first_descriptor = first_genome.descriptor(k=3)
 second_descriptor = second_genome.descriptor(k=3)
 
-print(f"Header: {first_genome.header}")
-print(f"Length: {first_descriptor.length} bp")
-print(f"GC content: {first_descriptor.gc_content * 100:.2f}%")
-print(f"AT content: {first_descriptor.at_content * 100:.2f}%")
+comparison = first_descriptor.compare(second_descriptor)
+
+print(f"First header: {first_genome.header}")
+print(f"Second header: {second_genome.header}")
+
+print(f"First sequence length: {first_descriptor.length} bp")
+print(f"First GC content: {first_descriptor.gc_content * 100:.2f}%")
 print(
-    f"Shannon entropy: "
+    f"First Shannon entropy: "
     f"{first_descriptor.shannon_entropy:.4f} bits"
 )
-print(f"GC skew: {first_descriptor.gc_skew:.4f}")
-print(
-    f"Purine content: "
-    f"{first_descriptor.purine_content * 100:.2f}%"
-)
-print(
-    f"Pyrimidine content: "
-    f"{first_descriptor.pyrimidine_content * 100:.2f}%"
-)
-print(f"k-mer diversity: {first_descriptor.kmer_diversity:.4f}")
-print(f"k-mer entropy: {first_descriptor.kmer_entropy:.4f} bits")
+print(f"First k-mer diversity: {first_descriptor.kmer_diversity:.4f}")
+print(f"First k-mer entropy: {first_descriptor.kmer_entropy:.4f} bits")
 
 print(first_descriptor.to_dict())
 print(first_descriptor.to_vector())
 print(first_descriptor.to_normalized_vector())
 
-distance = first_descriptor.euclidean_distance(second_descriptor)
-similarity = first_descriptor.cosine_similarity(second_descriptor)
-differences = first_descriptor.feature_differences(second_descriptor)
+print(f"Euclidean distance: {comparison.euclidean_distance:.4f}")
+print(f"Cosine similarity: {comparison.cosine_similarity:.4f}")
 
-print(f"Euclidean distance: {distance:.4f}")
-print(f"Cosine similarity: {similarity:.4f}")
-
-for feature_name, difference in sorted(
-    differences.items(),
-    key=lambda item: item[1],
-    reverse=True,
-):
+for feature_name, difference in comparison.sorted_feature_differences():
     print(f"{feature_name}: {difference:.4f}")
 ```
 
@@ -505,16 +584,18 @@ python main.py
 
 The program:
 
-1. Loads the included GFP FASTA sequence.
-2. Creates a synthetic balanced comparison sequence.
-3. Prints basic sequence information.
-4. Generates a mathematical descriptor.
-5. Prints the raw descriptor vector.
-6. Prints the normalized descriptor vector.
-7. Displays the first observed k-mer frequencies.
-8. Calculates Euclidean distance.
-9. Calculates cosine similarity.
-10. Prints feature differences in descending order.
+1. Loads the GFP coding sequence from *Aequorea victoria*.
+2. Loads the GFP coding sequence from *Acropora millepora*.
+3. Generates a mathematical descriptor for each CDS.
+4. Prints basic information for the reference sequence.
+5. Prints its complete mathematical descriptor.
+6. Prints its raw descriptor vector.
+7. Prints its normalized descriptor vector.
+8. Displays the first observed k-mer frequencies.
+9. Creates a structured `GenomeComparison`.
+10. Calculates Euclidean distance.
+11. Calculates cosine similarity.
+12. Prints normalized feature differences in descending order.
 
 ---
 
@@ -522,75 +603,82 @@ The program:
 
 ## Genome representation
 
-- [x] Genome class
-- [x] FASTA parser
-- [x] Sequence validation
-- [x] Sequence normalization
-- [x] Sequence length
-- [x] Reverse complement
+* [x] Genome class
+* [x] FASTA parser
+* [x] Sequence validation
+* [x] Sequence normalization
+* [x] Sequence length
+* [x] Reverse complement
 
 ## Mathematical descriptors
 
-- [x] Nucleotide frequencies
-- [x] GC content
-- [x] AT content
-- [x] Shannon entropy
-- [x] GC skew
-- [x] Purine content
-- [x] Pyrimidine content
-- [x] k-mer extraction
-- [x] k-mer frequencies
-- [x] Normalized k-mer diversity
-- [x] k-mer entropy
-- [x] GenomeDescriptor object
-- [x] Descriptor dictionary conversion
-- [x] Raw descriptor vector conversion
-- [x] Normalized descriptor vector conversion
+* [x] Nucleotide frequencies
+* [x] GC content
+* [x] AT content
+* [x] Shannon entropy
+* [x] GC skew
+* [x] Purine content
+* [x] Pyrimidine content
+* [x] k-mer extraction
+* [x] k-mer frequencies
+* [x] Normalized k-mer diversity
+* [x] k-mer entropy
+* [x] GenomeDescriptor object
+* [x] Descriptor dictionary conversion
+* [x] Raw descriptor vector conversion
+* [x] Normalized descriptor vector conversion
 
 ## Genome comparison
 
-- [x] Descriptor normalization
-- [x] Euclidean distance
-- [x] Cosine similarity
-- [x] Feature-level comparison
-- [x] Explainable feature differences
-- [x] GenomeComparison object
+* [x] Descriptor normalization
+* [x] Euclidean distance
+* [x] Cosine similarity
+* [x] Feature-level comparison
+* [x] Explainable feature differences
+* [x] GenomeComparison object
+* [x] Sorted feature differences
+* [x] Real CDS-to-CDS comparison
+* [x] Curated fluorescent-protein dataset
 
 ## Future development
 
-- [ ] Genome embeddings
-- [ ] Multiple-genome comparison
-- [ ] Similarity matrices
-- [ ] Clustering
-- [ ] Multiple FASTA record support
-- [ ] Ambiguous nucleotide support
-- [ ] RNA support
-- [ ] Graph-based descriptors
-- [ ] Spectral descriptors
-- [ ] Compression-based descriptors
-- [ ] Visualization tools
-- [ ] Descriptor export
-- [ ] Embedding export
+* [ ] Multiple-genome comparison
+* [ ] GenomeCollection object
+* [ ] Euclidean distance matrix
+* [ ] Cosine similarity matrix
+* [ ] Genome embeddings
+* [ ] Similarity ranking
+* [ ] Clustering
+* [ ] Multiple FASTA record support
+* [ ] Ambiguous nucleotide support
+* [ ] RNA support
+* [ ] Graph-based descriptors
+* [ ] Spectral descriptors
+* [ ] Compression-based descriptors
+* [ ] Visualization tools
+* [ ] Descriptor export
+* [ ] Comparison export
+* [ ] Embedding export
 
 ---
 
 # Genome Validation Rules
 
-| Rule | Status |
-|---|---|
-| Sequence cannot be empty | ✅ |
-| Sequence must be a string | ✅ |
-| Sequence is automatically converted to uppercase | ✅ |
-| Only **A**, **C**, **G** and **T** are accepted | ✅ |
-| Invalid nucleotide positions are reported | ✅ |
-| FASTA file cannot be empty | ✅ |
-| FASTA header must begin with `>` | ✅ |
-| k must be an integer | ✅ |
-| k must be greater than zero | ✅ |
-| k cannot exceed the sequence length | ✅ |
-| Descriptor comparisons require another `GenomeDescriptor` | ✅ |
-| Ambiguous nucleotide support | 🚧 Planned |
-| RNA support | 🚧 Planned |
+| Rule                                                      | Status     |
+| --------------------------------------------------------- | ---------- |
+| Sequence cannot be empty                                  | ✅          |
+| Sequence must be a string                                 | ✅          |
+| Sequence is automatically converted to uppercase          | ✅          |
+| Only **A**, **C**, **G** and **T** are accepted           | ✅          |
+| Invalid nucleotide positions are reported                 | ✅          |
+| FASTA file cannot be empty                                | ✅          |
+| FASTA header must begin with `>`                          | ✅          |
+| k must be an integer                                      | ✅          |
+| k must be greater than zero                               | ✅          |
+| k cannot exceed the sequence length                       | ✅          |
+| Descriptor comparisons require another `GenomeDescriptor` | ✅          |
+| Ambiguous nucleotide support                              | 🚧 Planned |
+| RNA support                                               | 🚧 Planned |
 
 ---
 
@@ -630,36 +718,39 @@ For more detailed output:
 python -m pytest -v
 ```
 
-The tests cover:
+The current test suite contains 39 tests and covers:
 
-- Sequence validation
-- Sequence length
-- GC content
-- AT content
-- Reverse complement
-- FASTA parsing
-- k-mer extraction
-- k-mer frequencies
-- Nucleotide frequencies
-- Shannon entropy
-- GC skew
-- Purine content
-- Pyrimidine content
-- Descriptor properties
-- k-mer diversity
-- k-mer entropy
-- GenomeDescriptor generation
-- Raw descriptor vector conversion
-- Normalized descriptor vector conversion
-- Euclidean distance
-- Euclidean distance symmetry
-- Euclidean distance type validation
-- Cosine similarity
-- Cosine similarity symmetry
-- Cosine similarity range
-- Cosine similarity type validation
-- Feature-level differences
-- Feature-difference structure
+* Sequence validation
+* Sequence length
+* GC content
+* AT content
+* Reverse complement
+* FASTA parsing
+* k-mer extraction
+* k-mer frequencies
+* Nucleotide frequencies
+* Shannon entropy
+* GC skew
+* Purine content
+* Pyrimidine content
+* Descriptor properties
+* k-mer diversity
+* k-mer entropy
+* GenomeDescriptor generation
+* Raw descriptor vector conversion
+* Normalized descriptor vector conversion
+* Euclidean distance
+* Euclidean distance symmetry
+* Euclidean distance type validation
+* Cosine similarity
+* Cosine similarity symmetry
+* Cosine similarity range
+* Cosine similarity type validation
+* Feature-level differences
+* Feature-difference structure
+* GenomeComparison generation
+* GenomeComparison type validation
+* Sorted feature differences
 
 ---
 
@@ -668,7 +759,13 @@ The tests cover:
 ```text
 genome-embeddings/
 ├── data/
-│   └── gfp.fasta
+│   ├── fluorescent_proteins/
+│   │   ├── aequorea_victoria_gfp_mrna.fasta
+│   │   ├── aequorea_victoria_gfp_cds.fasta
+│   │   ├── acropora_millepora_gfp_cds.fasta
+│   │   └── discosoma_fp583_cds.fasta
+│   └── controls/
+│       └── periodic_sequence.fasta
 ├── src/
 │   └── genome.py
 ├── tests/
@@ -685,66 +782,83 @@ genome-embeddings/
 
 # Architecture
 
-The project currently separates sequence analysis into three responsibilities.
+The project currently separates sequence analysis into four responsibilities.
 
 ## Genome
 
 The `Genome` class:
 
-- Stores the validated sequence
-- Loads FASTA data
-- Calculates individual mathematical descriptors
-- Extracts and counts k-mers
-- Produces a `GenomeDescriptor`
+* Stores the validated sequence
+* Preserves an optional FASTA header
+* Loads FASTA data
+* Calculates individual mathematical descriptors
+* Extracts and counts k-mers
+* Produces a `GenomeDescriptor`
 
 ## GenomeDescriptor
 
 The `GenomeDescriptor` class:
 
-- Stores the calculated descriptor values
-- Converts descriptors into dictionaries
-- Converts descriptors into raw numerical vectors
-- Produces normalized comparison vectors
-- Calculates Euclidean distance
-- Calculates cosine similarity
-- Explains comparisons through feature differences
+* Stores the calculated descriptor values
+* Converts descriptors into dictionaries
+* Converts descriptors into raw numerical vectors
+* Produces normalized comparison vectors
+* Calculates Euclidean distance
+* Calculates cosine similarity
+* Explains comparisons through feature differences
+* Produces a structured `GenomeComparison`
+
+## GenomeComparison
+
+The `GenomeComparison` class:
+
+* Stores Euclidean distance
+* Stores cosine similarity
+* Stores normalized feature differences
+* Sorts feature differences from largest to smallest
 
 ## main.py
 
 The demonstration program:
 
-- Loads the real example dataset
-- Creates a synthetic comparison sequence
-- Coordinates descriptor generation
-- Presents raw and normalized vectors
-- Calculates similarity and distance
-- Displays feature-level explanations
+* Loads two real fluorescent-protein CDS records
+* Coordinates descriptor generation
+* Presents raw and normalized vectors
+* Creates a structured comparison
+* Displays distance and similarity
+* Displays feature-level explanations
 
 The resulting architecture is:
 
 ```text
-Genomic sequence
-       │
-       ▼
-     Genome
-       │
-       ├── Individual descriptor methods
-       │
-       ▼
-  descriptor(k)
-       │
-       ▼
+FASTA sequence
+      │
+      ▼
+    Genome
+      │
+      ├── Individual descriptor methods
+      │
+      ▼
+ descriptor(k)
+      │
+      ▼
 GenomeDescriptor
-       │
-       ├── to_dict()
-       ├── to_vector()
-       ├── to_normalized_vector()
-       ├── euclidean_distance()
-       ├── cosine_similarity()
-       └── feature_differences()
+      │
+      ├── to_dict()
+      ├── to_vector()
+      ├── to_normalized_vector()
+      ├── euclidean_distance()
+      ├── cosine_similarity()
+      ├── feature_differences()
+      └── compare()
+               │
+               ▼
+       GenomeComparison
+               │
+               └── sorted_feature_differences()
 ```
 
-The next architectural step will introduce a dedicated `GenomeComparison` object that groups comparison results into one structured representation.
+The next architectural step will introduce a collection abstraction for comparing more than two genomes.
 
 ---
 
@@ -758,52 +872,127 @@ Genome Embeddings explores a different approach: describing genomic sequences th
 
 Rather than treating DNA as raw text, the project treats a genomic sequence as a mathematical object whose properties can be:
 
-- Measured
-- Interpreted
-- Compared
-- Explained
-- Visualized
-- Converted into vectors
-- Integrated with machine-learning systems
+* Measured
+* Interpreted
+* Compared
+* Explained
+* Visualized
+* Converted into vectors
+* Integrated with machine-learning systems
 
 The project emphasizes:
 
-- Mathematical interpretability
-- Reproducibility
-- Explainable descriptors
-- Explainable comparisons
-- Modular architecture
-- Automated testing
-- Extensibility
-- Compatibility with future machine-learning applications
+* Mathematical interpretability
+* Reproducibility
+* Explainable descriptors
+* Explainable comparisons
+* Modular architecture
+* Automated testing
+* Real biological datasets
+* Comparisons between equivalent biological regions
+* Extensibility
+* Compatibility with future machine-learning applications
 
 ---
 
 # Example Dataset
 
-The repository includes the following example sequence:
+The repository contains a small curated dataset of fluorescent-protein nucleotide sequences.
 
-## `gfp.fasta`
+## Fluorescent proteins
 
-- **Organism:** *Aequorea victoria*
-- **Gene:** Green Fluorescent Protein
-- **Abbreviation:** GFP
-- **Sequence type:** mRNA, complete coding sequence
-- **Sequence length:** 922 bp
-- **Source:** NCBI GenBank
-- **Accession:** L29345.1
+### `aequorea_victoria_gfp_cds.fasta`
 
-This real biological sequence is used to demonstrate the implemented functionality.
+* **Organism:** *Aequorea victoria*
+* **Protein:** Green fluorescent protein
+* **Gene:** GFP
+* **Accession:** L29345.1
+* **Protein ID:** AAA58246.1
+* **Region:** CDS
+* **Location:** 26..742
+* **Sequence length:** 717 nt
 
-The example program compares GFP with a synthetic balanced sequence of equal length:
+This CDS is used as the primary reference sequence in `main.py`.
 
-```python
-"ACGT" * 230 + "AC"
+---
+
+### `aequorea_victoria_gfp_mrna.fasta`
+
+* **Organism:** *Aequorea victoria*
+* **Protein:** Green fluorescent protein
+* **Accession:** L29345.1
+* **Region:** Complete mRNA record
+* **Sequence length:** 922 nt
+
+This file is retained as a reference record but is not used for the primary CDS-to-CDS comparison.
+
+---
+
+### `acropora_millepora_gfp_cds.fasta`
+
+* **Organism:** *Acropora millepora*
+* **Protein:** Green fluorescent protein
+* **Accession:** AY646067.1
+* **Protein ID:** AAU06846.1
+* **Region:** CDS
+* **Location:** 1..696
+* **Sequence length:** 696 nt
+
+This CDS is used as the comparison sequence in `main.py`.
+
+---
+
+### `discosoma_fp583_cds.fasta`
+
+* **Organism:** *Discosoma* species
+* **Protein:** Fluorescent protein FP583
+* **Accession:** AF168419.2
+* **Protein ID:** AAF03369.1
+* **Region:** CDS
+* **Location:** 54..731
+* **Sequence length:** 678 nt
+
+This sequence is included for future multiple-genome comparison and distance-matrix analysis.
+
+---
+
+## Synthetic control
+
+### `periodic_sequence.fasta`
+
+This file contains a balanced artificial sequence constructed by repeating:
+
+```text
+ACGT
 ```
 
-The synthetic sequence has balanced nucleotide composition but a highly periodic local structure.
+The current control contains 120 nucleotides.
 
-This makes it useful for demonstrating how k-mer diversity and k-mer entropy capture sequence organization that basic nucleotide composition cannot detect.
+It is retained as a methodological control for evaluating how descriptors respond to highly periodic local sequence organization.
+
+The synthetic sequence is not used as the primary biological comparison.
+
+---
+
+# Dataset Design
+
+The primary demonstration compares equivalent coding regions:
+
+```text
+Aequorea victoria GFP CDS
+             versus
+Acropora millepora GFP CDS
+```
+
+This is more rigorous than comparing a complete mRNA against a CDS because untranslated regions could affect:
+
+* GC content
+* Nucleotide entropy
+* k-mer diversity
+* k-mer entropy
+* Descriptor distances
+
+The retained complete mRNA record remains useful for future experiments exploring how genomic region selection affects mathematical descriptors.
 
 ---
 
@@ -815,14 +1004,21 @@ The project is divided conceptually into three phases.
 
 The first phase builds reusable and interpretable measurements of genomic sequences.
 
-Examples include:
+Current examples include:
 
-- Base composition
-- Information entropy
-- Sequence imbalance
-- k-mer diversity
-- k-mer entropy
-- Future graph, spectral and compression descriptors
+* Base composition
+* Information entropy
+* Sequence imbalance
+* k-mer diversity
+* k-mer entropy
+
+Future examples may include:
+
+* Graph-based descriptors
+* Spectral descriptors
+* Compression-based descriptors
+* Fractal descriptors
+* Additional information-theoretic descriptors
 
 ## Phase 2: Explainable genome comparison
 
@@ -830,19 +1026,22 @@ The second phase compares descriptor vectors through mathematical metrics.
 
 Current capabilities include:
 
-- Descriptor normalization
-- Euclidean distance
-- Cosine similarity
-- Feature-level difference analysis
+* Descriptor normalization
+* Euclidean distance
+* Cosine similarity
+* Feature-level difference analysis
+* Structured comparison objects
+* Real CDS-to-CDS comparison
 
 Future comparison capabilities will include:
 
-- Structured comparison objects
-- Multiple-genome comparison
-- Similarity matrices
-- Ranking
-- Clustering
-- Visualization
+* Multiple-genome comparison
+* Distance matrices
+* Similarity matrices
+* Similarity ranking
+* Clustering
+* Visualization
+* Comparison export
 
 ## Phase 3: Genome embeddings
 
@@ -850,14 +1049,14 @@ The third phase combines mathematical descriptors into reusable vector represent
 
 These embeddings will support:
 
-- Genome similarity analysis
-- Distance calculations
-- Clustering
-- Classification
-- Anomaly detection
-- Comparative genomics
-- Machine-learning pipelines
-- Artificial-intelligence applications
+* Genome similarity analysis
+* Distance calculations
+* Clustering
+* Classification
+* Anomaly detection
+* Comparative genomics
+* Machine-learning pipelines
+* Artificial-intelligence applications
 
 The goal is not to replace deep-learning approaches, but to complement them with transparent and explainable mathematical representations.
 
