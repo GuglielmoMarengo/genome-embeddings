@@ -33,6 +33,19 @@ The long-term goal is to build interpretable genome and transcriptome embeddings
 * Machine learning
 * Artificial intelligence
 
+A central future direction of the project is multiscale sequence representation.
+
+Rather than describing a biological sequence at a single k-mer resolution, future embeddings will combine information across multiple values of `k`.
+
+Different k-mer scales capture different levels of sequence organization:
+
+* `k = 1`: nucleotide composition
+* `k = 2`: short-range nucleotide dependencies
+* `k = 3`: triplet-scale and codon-related organization
+* `k >= 4`: progressively more specific local sequence patterns
+
+The long-term objective is to build embeddings that preserve information across complementary sequence scales while remaining mathematically interpretable.
+
 The project is currently intended for research and software-development purposes.
 
 Potential future clinical or diagnostic applications would require extensive biological, statistical, clinical and regulatory validation.
@@ -59,6 +72,7 @@ Current capabilities include:
 * k-mer frequency analysis
 * Normalized k-mer diversity
 * k-mer entropy
+* Configurable single k-mer length
 * Genome descriptor generation
 * Descriptor dictionary conversion
 * Raw descriptor vector conversion
@@ -356,6 +370,46 @@ normalized k-mer entropy = k-mer entropy / (2k)
 ```
 
 This descriptor captures local sequence organization that cannot be detected through nucleotide frequencies alone.
+
+---
+
+# Configurable k-mer Resolution
+
+The current implementation uses `k = 3` as the default value in the demonstration program:
+
+```python
+DEFAULT_KMER_LENGTH = 3
+```
+
+This default provides a reproducible example, but the value is not fixed inside the core library.
+
+Users can already calculate descriptors and comparison matrices at different k-mer resolutions:
+
+```python
+descriptor = genome.descriptor(k=4)
+
+distance_matrix = collection.euclidean_distance_matrix(k=4)
+similarity_matrix = collection.cosine_similarity_matrix(k=4)
+```
+
+Different values of `k` capture different sequence properties:
+
+* `k = 1` mainly describes nucleotide composition.
+* `k = 2` captures dinucleotide-scale dependencies.
+* `k = 3` captures triplet-scale organization.
+* Higher values capture progressively more specific local patterns.
+
+A triplet k-mer analysis does not automatically equal codon analysis because k-mers are currently extracted through a sliding window and do not necessarily follow a biological reading frame.
+
+Increasing `k` also increases:
+
+* The number of theoretically possible k-mers
+* Feature sparsity
+* Sensitivity to sequence length
+* Computational cost
+* The number of observations required for stable estimates
+
+For these reasons, no single value of `k` should be assumed to be universally optimal.
 
 ---
 
@@ -677,6 +731,102 @@ The next validation step will require real non-fluorescent biological control se
 
 ---
 
+# Multiscale Representation
+
+The project currently calculates descriptors using one configurable k-mer length at a time.
+
+Future development will distinguish between two related concepts:
+
+1. k-mer sensitivity analysis
+2. Multiscale embeddings
+
+---
+
+## k-mer Sensitivity Analysis
+
+Sensitivity analysis will calculate descriptors and comparison results independently across multiple values of `k`.
+
+Conceptually:
+
+```python
+k_values = [1, 2, 3, 4, 5]
+```
+
+Each value will produce an independent descriptor space and independent comparison results.
+
+This will make it possible to study:
+
+* How descriptor values change with k-mer resolution
+* How stable pairwise distances remain across scales
+* Which values of `k` best separate biological groups
+* How sequence length affects higher-order k-mer statistics
+* Whether similarity rankings remain stable
+* Whether clustering remains stable across parameter choices
+* At which values sparsity begins to dominate
+* How robust the representation is to methodological choices
+
+Sensitivity analysis will not combine the scales.
+
+Its purpose will be to measure how the method behaves when `k` changes.
+
+---
+
+## Multiscale Embeddings
+
+A multiscale embedding will combine information derived from several k-mer lengths into a single mathematical representation.
+
+Conceptually:
+
+```text
+global descriptors
+        +
+k = 1 descriptors
+        +
+k = 2 descriptors
+        +
+k = 3 descriptors
+        +
+higher-order k-mer descriptors
+        =
+multiscale genome embedding
+```
+
+A future API may resemble:
+
+```python
+embedding = genome.multiscale_embedding(
+    k_values=[1, 2, 3, 4, 5],
+)
+```
+
+Sensitivity analysis evaluates each scale separately.
+
+Multiscale embedding combines complementary scales into one representation.
+
+Potential advantages include:
+
+* Preservation of both global and local sequence information
+* Reduced dependence on a single parameter choice
+* Improved discrimination between biologically similar sequences
+* Better characterization of hierarchical sequence organization
+* More robust representations across different sequence types
+
+Future work will need to address:
+
+* Feature normalization across scales
+* Scale weighting
+* Redundant information
+* Dimensionality growth
+* Increasing sparsity at larger values of `k`
+* Dependence on sequence length
+* Computational cost
+* Biological interpretation
+* Statistical validation
+
+The goal is not to assume that one k-mer length is universally optimal, but to determine how information from different sequence resolutions can be combined transparently and reproducibly.
+
+---
+
 # Quick Example
 
 ```python
@@ -795,6 +945,7 @@ The program:
 * [x] k-mer frequencies
 * [x] Normalized k-mer diversity
 * [x] k-mer entropy
+* [x] Configurable single k-mer length
 * [x] GenomeDescriptor object
 * [x] Descriptor dictionary conversion
 * [x] Raw descriptor vector conversion
@@ -828,14 +979,31 @@ The program:
 * [ ] Clustering
 * [ ] Heatmap visualization
 
+## Multiscale representation
+
+* [ ] k-mer sensitivity analysis
+* [ ] Multi-k descriptor comparison
+* [ ] Multi-k matrix comparison
+* [ ] Cross-scale distance stability analysis
+* [ ] Cross-scale similarity stability analysis
+* [ ] Multiscale k-mer descriptors
+* [ ] Multiscale genome embeddings
+* [ ] Scale weighting
+* [ ] Cross-scale normalization
+* [ ] Cross-scale feature redundancy analysis
+* [ ] Sequence-length sensitivity analysis
+* [ ] Sparse high-k representation
+
 ## Future descriptors
 
 * [ ] Conditional entropy
 * [ ] Block entropy
 * [ ] Entropy rate
+* [ ] Mutual information
 * [ ] Jensen-Shannon divergence
 * [ ] Dinucleotide statistics
 * [ ] Codon usage descriptors
+* [ ] Reading-frame-aware descriptors
 * [ ] Local window descriptors
 * [ ] Graph-based descriptors
 * [ ] Spectral descriptors
@@ -848,6 +1016,10 @@ The program:
 * [ ] Genome embeddings
 * [ ] Transcript embeddings
 * [ ] Transcriptomic sample embeddings
+* [ ] Configurable embedding parameters
+* [ ] Embedding configuration object
+* [ ] Parameter provenance
+* [ ] Reproducible multiscale analysis
 * [ ] Multiple FASTA record support
 * [ ] Ambiguous nucleotide support
 * [ ] RNA support
@@ -1107,6 +1279,7 @@ The next architectural step will introduce a structured `GenomeMatrix` object co
 * Genome labels
 * Metric name
 * k-mer length
+* Future support for multiple k-mer lengths
 * Future export functionality
 
 ---
@@ -1127,6 +1300,7 @@ Rather than treating DNA or RNA as raw text, the project treats biological seque
 * Explained
 * Visualized
 * Converted into vectors
+* Analyzed across multiple scales
 * Integrated with statistical models
 * Integrated with machine-learning systems
 
@@ -1137,6 +1311,7 @@ The project emphasizes:
 * Reproducibility
 * Explainable descriptors
 * Explainable comparisons
+* Multiscale sequence representation
 * Modular architecture
 * Automated testing
 * Real biological datasets
@@ -1147,6 +1322,10 @@ The project emphasizes:
 The central research question is:
 
 > Can interpretable mathematical descriptors produce biologically meaningful, robust and reusable embeddings of genomic and transcriptomic data?
+
+A complementary multiscale question is:
+
+> Can information across multiple sequence resolutions be combined into more informative embeddings without sacrificing interpretability?
 
 ---
 
@@ -1260,6 +1439,8 @@ Future validation will require:
 * Taxonomically diverse datasets
 * Perturbed and synthetic benchmark sequences
 * Independent biological annotations
+* Multi-k benchmark analyses
+* Sequence-length sensitivity experiments
 
 ---
 
@@ -1279,6 +1460,7 @@ Current examples include:
 * k-mer diversity
 * k-mer entropy
 * Normalized descriptor vectors
+* Configurable single-scale k-mer analysis
 
 ## Phase 2: Explainable genome comparison
 
@@ -1294,10 +1476,17 @@ Current capabilities include:
 * Multi-genome distance matrices
 * Multi-genome similarity matrices
 
-## Phase 3: Advanced mathematical descriptors
+## Phase 3: Multiscale and advanced mathematical descriptors
 
-Future descriptor families may include:
+This phase will investigate both independent scale analysis and combined multiscale representations.
 
+Future capabilities may include:
+
+* k-mer sensitivity analysis
+* Multi-k descriptor comparison
+* Multiscale genome embeddings
+* Scale weighting
+* Cross-scale normalization
 * Conditional entropy
 * Block entropy
 * Entropy rate
@@ -1323,6 +1512,7 @@ This phase will include:
 * Batch processing
 * Parallel execution
 * Benchmark datasets
+* Cross-scale stability analysis
 
 ## Phase 5: Transcriptomics
 
@@ -1335,6 +1525,7 @@ This phase may introduce:
 * Co-expression graph descriptors
 * Transcriptomic clustering
 * Differential representation analysis
+* Multiscale transcript representations
 
 ## Phase 6: Biological and translational validation
 
@@ -1344,6 +1535,7 @@ This phase will require:
 * Statistical validation
 * Ablation studies
 * Robustness analysis
+* Parameter sensitivity analysis
 * External validation datasets
 * Clinical research cohorts
 * Uncertainty estimation
