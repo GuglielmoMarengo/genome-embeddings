@@ -1,6 +1,12 @@
 from pathlib import Path
 
-from src.genome import Genome, GenomeCollection
+from src.genome import (
+    Genome,
+    GenomeCollection,
+    GenomeComparison,
+    GenomeDescriptor,
+    GenomeMatrix,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -44,30 +50,60 @@ DEFAULT_KMER_LENGTH = 3
 DEFAULT_KMER_LIMIT = 10
 
 
-def print_genome_summary(genome):
+def print_genome_summary(
+    genome: Genome,
+) -> None:
     print(f"Header: {genome.header}")
-    print(f"Sequence (first 100 bp): {genome.sequence[:100]}...")
+    print(
+        "Sequence (first 100 bp): "
+        f"{genome.sequence[:100]}..."
+    )
     print(
         "Reverse complement (first 100 bp): "
         f"{genome.reverse_complement()[:100]}..."
     )
 
 
-def print_descriptor(descriptor):
+def print_descriptor(
+    descriptor: GenomeDescriptor,
+) -> None:
     print("\nGenome Descriptor:")
     print(f"Length: {descriptor.length} bp")
-    print(f"GC content: {descriptor.gc_content * 100:.2f}%")
-    print(f"AT content: {descriptor.at_content * 100:.2f}%")
-    print(f"Shannon entropy: {descriptor.shannon_entropy:.4f} bits")
+    print(
+        f"GC content: "
+        f"{descriptor.gc_content * 100:.2f}%"
+    )
+    print(
+        f"AT content: "
+        f"{descriptor.at_content * 100:.2f}%"
+    )
+    print(
+        f"Shannon entropy: "
+        f"{descriptor.shannon_entropy:.4f} bits"
+    )
     print(f"GC skew: {descriptor.gc_skew:.4f}")
-    print(f"Purine content: {descriptor.purine_content * 100:.2f}%")
-    print(f"Pyrimidine content: {descriptor.pyrimidine_content * 100:.2f}%")
+    print(
+        f"Purine content: "
+        f"{descriptor.purine_content * 100:.2f}%"
+    )
+    print(
+        f"Pyrimidine content: "
+        f"{descriptor.pyrimidine_content * 100:.2f}%"
+    )
     print(f"k-mer length: {descriptor.kmer_length}")
-    print(f"k-mer diversity: {descriptor.kmer_diversity:.4f}")
-    print(f"k-mer entropy: {descriptor.kmer_entropy:.4f} bits")
+    print(
+        f"k-mer diversity: "
+        f"{descriptor.kmer_diversity:.4f}"
+    )
+    print(
+        f"k-mer entropy: "
+        f"{descriptor.kmer_entropy:.4f} bits"
+    )
 
 
-def print_descriptor_vectors(descriptor):
+def print_descriptor_vectors(
+    descriptor: GenomeDescriptor,
+) -> None:
     print("\nRaw Descriptor Vector:")
     print(descriptor.to_vector())
 
@@ -76,11 +112,14 @@ def print_descriptor_vectors(descriptor):
 
 
 def print_kmer_frequencies(
-    genome,
-    k=DEFAULT_KMER_LENGTH,
-    limit=DEFAULT_KMER_LIMIT,
-):
-    print(f"\nFirst {limit} k-mer frequencies (k={k}):")
+    genome: Genome,
+    k: int = DEFAULT_KMER_LENGTH,
+    limit: int = DEFAULT_KMER_LIMIT,
+) -> None:
+    print(
+        f"\nFirst {limit} "
+        f"k-mer frequencies (k={k}):"
+    )
 
     frequencies = genome.kmer_frequencies(k)
 
@@ -94,35 +133,66 @@ def print_kmer_frequencies(
             break
 
 
-def print_genome_comparison(comparison):
+def print_genome_comparison(
+    comparison: GenomeComparison,
+) -> None:
     print("\nGenome Comparison:")
-    print(f"Euclidean distance: {comparison.euclidean_distance:.4f}")
-    print(f"Cosine similarity: {comparison.cosine_similarity:.4f}")
+    print(
+        f"Euclidean distance: "
+        f"{comparison.euclidean_distance:.4f}"
+    )
+    print(
+        f"Cosine similarity: "
+        f"{comparison.cosine_similarity:.4f}"
+    )
 
     print("\nFeature Differences:")
 
-    for feature_name, difference in comparison.sorted_feature_differences():
+    for (
+        feature_name,
+        difference,
+    ) in comparison.sorted_feature_differences():
         print(f"{feature_name}: {difference:.4f}")
 
 
-def print_matrix(
-    title: str,
-    labels: list[str],
-    matrix: list[list[float]],
+def print_genome_matrix(
+    matrix: GenomeMatrix,
 ) -> None:
-    label_width = max(len(label) for label in labels)
-    value_width = 20
+    label_width = max(
+        len(label)
+        for label in matrix.labels
+    )
 
-    print(f"\n{title}:")
+    value_width = max(
+        20,
+        max(
+            len(label) + 2
+            for label in matrix.labels
+        ),
+    )
+
+    metric_title = {
+        "euclidean": "Euclidean Distance Matrix",
+        "cosine": "Cosine Similarity Matrix",
+    }[matrix.metric]
+
+    print(
+        f"\n{metric_title} "
+        f"(k={matrix.kmer_length}):"
+    )
 
     header = " " * (label_width + 2)
 
-    for label in labels:
+    for label in matrix.labels:
         header += f"{label:>{value_width}}"
 
     print(header)
 
-    for label, row in zip(labels, matrix, strict=True):
+    for label, row in zip(
+        matrix.labels,
+        matrix.values,
+        strict=True,
+    ):
         formatted_values = "".join(
             f"{value:>{value_width}.4f}"
             for value in row
@@ -134,22 +204,27 @@ def print_matrix(
         )
 
 
-def main():
-    genomes = [
+def load_genomes() -> list[Genome]:
+    return [
         Genome.from_fasta(AEQUOREA_GFP_PATH),
         Genome.from_fasta(ACROPORA_GFP_PATH),
         Genome.from_fasta(DISCOSOMA_FP583_PATH),
         Genome.from_fasta(PERIODIC_CONTROL_PATH),
     ]
 
+
+def main() -> None:
+    genomes = load_genomes()
     collection = GenomeCollection(genomes)
 
     reference_genome = genomes[0]
+    comparison_genome = genomes[1]
+
     reference_descriptor = reference_genome.descriptor(
         k=DEFAULT_KMER_LENGTH
     )
 
-    comparison_descriptor = genomes[1].descriptor(
+    comparison_descriptor = comparison_genome.descriptor(
         k=DEFAULT_KMER_LENGTH
     )
 
@@ -169,25 +244,22 @@ def main():
 
     print_genome_comparison(comparison)
 
-    euclidean_matrix = collection.euclidean_distance_matrix(
-        k=DEFAULT_KMER_LENGTH
+    euclidean_matrix = (
+        collection.euclidean_distance_matrix(
+            labels=GENOME_LABELS,
+            k=DEFAULT_KMER_LENGTH,
+        )
     )
 
-    cosine_matrix = collection.cosine_similarity_matrix(
-        k=DEFAULT_KMER_LENGTH
+    cosine_matrix = (
+        collection.cosine_similarity_matrix(
+            labels=GENOME_LABELS,
+            k=DEFAULT_KMER_LENGTH,
+        )
     )
 
-    print_matrix(
-        title="Euclidean Distance Matrix",
-        labels=GENOME_LABELS,
-        matrix=euclidean_matrix,
-    )
-
-    print_matrix(
-        title="Cosine Similarity Matrix",
-        labels=GENOME_LABELS,
-        matrix=cosine_matrix,
-    )
+    print_genome_matrix(euclidean_matrix)
+    print_genome_matrix(cosine_matrix)
 
 
 if __name__ == "__main__":

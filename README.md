@@ -89,6 +89,10 @@ Current capabilities include:
 * Batch descriptor generation
 * Euclidean distance matrices
 * Cosine similarity matrices
+* Structured `GenomeMatrix` results
+* Matrix labels and metadata
+* Matrix shape validation
+* Matrix metric validation
 * Multi-genome comparison using real biological sequences
 
 ---
@@ -383,13 +387,20 @@ DEFAULT_KMER_LENGTH = 3
 
 This default provides a reproducible example, but the value is not fixed inside the core library.
 
-Users can already calculate descriptors and comparison matrices at different k-mer resolutions:
+Users can calculate descriptors and comparison matrices at different k-mer resolutions:
 
 ```python
 descriptor = genome.descriptor(k=4)
 
-distance_matrix = collection.euclidean_distance_matrix(k=4)
-similarity_matrix = collection.cosine_similarity_matrix(k=4)
+distance_matrix = collection.euclidean_distance_matrix(
+    labels=["Genome A", "Genome B"],
+    k=4,
+)
+
+similarity_matrix = collection.cosine_similarity_matrix(
+    labels=["Genome A", "Genome B"],
+    k=4,
+)
 ```
 
 Different values of `k` capture different sequence properties:
@@ -543,7 +554,7 @@ for feature_name, difference in comparison.sorted_feature_differences():
     print(f"{feature_name}: {difference:.4f}")
 ```
 
-This architecture keeps comparison logic outside the presentation layer and allows comparison results to be reused by future matrix, ranking, export and visualization features.
+This architecture keeps comparison logic outside the presentation layer and allows comparison results to be reused by future ranking, export and visualization features.
 
 ---
 
@@ -574,6 +585,7 @@ The collection:
 * Generates descriptors for all genomes
 * Calculates Euclidean distance matrices
 * Calculates cosine similarity matrices
+* Returns structured `GenomeMatrix` objects
 
 Descriptors are generated with:
 
@@ -585,22 +597,112 @@ The returned descriptors preserve the same order as `collection.genomes`.
 
 ---
 
+# GenomeMatrix
+
+The `GenomeMatrix` object stores a multi-genome comparison matrix together with its metadata.
+
+A matrix contains:
+
+* `labels`
+* `values`
+* `metric`
+* `kmer_length`
+
+Example:
+
+```python
+matrix = collection.euclidean_distance_matrix(
+    labels=[
+        "Genome A",
+        "Genome B",
+        "Genome C",
+    ],
+    k=3,
+)
+```
+
+The result is a `GenomeMatrix`:
+
+```python
+print(matrix.labels)
+print(matrix.values)
+print(matrix.metric)
+print(matrix.kmer_length)
+```
+
+Example metadata:
+
+```text
+labels: ["Genome A", "Genome B", "Genome C"]
+metric: "euclidean"
+kmer_length: 3
+```
+
+The `values` field contains the numerical matrix:
+
+```python
+[
+    [0.0, 0.12, 0.45],
+    [0.12, 0.0, 0.39],
+    [0.45, 0.39, 0.0],
+]
+```
+
+`GenomeMatrix` validates that:
+
+* Labels are not empty
+* Matrix values are square
+* The number of labels matches the matrix size
+* The metric is supported
+
+The currently supported metrics are:
+
+* `euclidean`
+* `cosine`
+
+The structured object keeps matrix data, labels and calculation parameters together, preparing the project for future ranking, export, visualization and multiscale analysis.
+
+---
+
 # Multi-Genome Comparison
 
 A `GenomeCollection` can calculate pairwise metrics for every genome in the collection.
 
+The labels must follow the same order as the genomes stored in the collection.
+
+```python
+labels = [
+    "Genome A",
+    "Genome B",
+    "Genome C",
+]
+```
+
+---
+
 ## Euclidean Distance Matrix
 
 ```python
-distance_matrix = collection.euclidean_distance_matrix(k=3)
+distance_matrix = collection.euclidean_distance_matrix(
+    labels=labels,
+    k=3,
+)
 ```
 
-The resulting matrix is:
+The resulting `GenomeMatrix` is:
 
 * Square
 * Symmetric
 * Ordered consistently with `collection.genomes`
 * Equal to `0.0` on the diagonal
+* Associated with the `euclidean` metric
+* Associated with the requested k-mer length
+
+The numerical values are available through:
+
+```python
+distance_matrix.values
+```
 
 Example structure:
 
@@ -616,15 +718,26 @@ Genome C              0.4500     0.3900     0.0000
 ## Cosine Similarity Matrix
 
 ```python
-similarity_matrix = collection.cosine_similarity_matrix(k=3)
+similarity_matrix = collection.cosine_similarity_matrix(
+    labels=labels,
+    k=3,
+)
 ```
 
-The resulting matrix is:
+The resulting `GenomeMatrix` is:
 
 * Square
 * Symmetric
 * Ordered consistently with `collection.genomes`
 * Equal to `1.0` on the diagonal
+* Associated with the `cosine` metric
+* Associated with the requested k-mer length
+
+The numerical values are available through:
+
+```python
+similarity_matrix.values
+```
 
 Example structure:
 
@@ -634,14 +747,6 @@ Genome A              1.0000     0.9800     0.8100
 Genome B              0.9800     1.0000     0.8300
 Genome C              0.8100     0.8300     1.0000
 ```
-
-The current implementation returns matrices as:
-
-```python
-list[list[float]]
-```
-
-A future `GenomeMatrix` object will provide structured metadata, labels and export functionality.
 
 ---
 
@@ -862,6 +967,13 @@ genomes = [
     ),
 ]
 
+labels = [
+    "Aequorea GFP",
+    "Acropora GFP",
+    "Discosoma FP583",
+    "Periodic control",
+]
+
 collection = GenomeCollection(genomes)
 
 descriptors = collection.descriptors(k=3)
@@ -882,11 +994,25 @@ for feature_name, difference in (
 ):
     print(f"{feature_name}: {difference:.4f}")
 
-euclidean_matrix = collection.euclidean_distance_matrix(k=3)
-cosine_matrix = collection.cosine_similarity_matrix(k=3)
+euclidean_matrix = collection.euclidean_distance_matrix(
+    labels=labels,
+    k=3,
+)
 
-print(euclidean_matrix)
-print(cosine_matrix)
+cosine_matrix = collection.cosine_similarity_matrix(
+    labels=labels,
+    k=3,
+)
+
+print(euclidean_matrix.metric)
+print(euclidean_matrix.kmer_length)
+print(euclidean_matrix.labels)
+print(euclidean_matrix.values)
+
+print(cosine_matrix.metric)
+print(cosine_matrix.kmer_length)
+print(cosine_matrix.labels)
+print(cosine_matrix.values)
 ```
 
 ---
@@ -915,9 +1041,9 @@ The program:
 12. Creates a detailed pairwise `GenomeComparison`.
 13. Prints Euclidean distance and cosine similarity.
 14. Prints feature differences in descending order.
-15. Calculates a Euclidean distance matrix.
-16. Calculates a cosine similarity matrix.
-17. Prints both matrices with readable labels.
+15. Creates a structured Euclidean `GenomeMatrix`.
+16. Creates a structured cosine `GenomeMatrix`.
+17. Prints both matrices with their labels and k-mer resolution.
 
 ---
 
@@ -972,8 +1098,16 @@ The program:
 * [x] Cosine similarity matrix
 * [x] Matrix symmetry validation
 * [x] Matrix diagonal validation
+* [x] GenomeMatrix object
+* [x] Matrix labels
+* [x] Matrix metric metadata
+* [x] Matrix k-mer metadata
+* [x] Matrix shape validation
+* [x] Matrix label-count validation
 * [x] Real multi-genome demonstration
-* [ ] GenomeMatrix object
+* [ ] Matrix value lookup
+* [ ] Matrix row conversion
+* [ ] Matrix dictionary conversion
 * [ ] Biological negative controls
 * [ ] Similarity ranking
 * [ ] Clustering
@@ -1055,6 +1189,10 @@ The program:
 | GenomeCollection input must be a list                     | ✅          |
 | GenomeCollection cannot be empty                          | ✅          |
 | GenomeCollection accepts only `Genome` objects            | ✅          |
+| GenomeMatrix labels cannot be empty                       | ✅          |
+| GenomeMatrix values must be square                        | ✅          |
+| GenomeMatrix labels must match matrix size                | ✅          |
+| GenomeMatrix metric must be supported                     | ✅          |
 | Matrix order follows collection order                     | ✅          |
 | Euclidean matrix diagonal equals `0.0`                    | ✅          |
 | Cosine matrix diagonal equals `1.0`                       | ✅          |
@@ -1099,7 +1237,7 @@ For more detailed output:
 python -m pytest -v
 ```
 
-The current test suite contains **54 tests** and covers:
+The current test suite contains **63 tests** and covers:
 
 * Sequence validation
 * Sequence length
@@ -1139,14 +1277,23 @@ The current test suite contains **54 tests** and covers:
 * Batch descriptor generation
 * Descriptor-order preservation
 * Invalid collection k-mer length handling
-* Euclidean distance matrix shape
-* Euclidean distance matrix diagonal
-* Euclidean distance matrix symmetry
+* GenomeMatrix creation
+* GenomeMatrix metadata
+* Empty matrix-label validation
+* Square-matrix validation
+* Matrix label-count validation
+* Matrix metric validation
+* Structured Euclidean matrix generation
+* Euclidean matrix shape
+* Euclidean matrix diagonal
+* Euclidean matrix symmetry
 * Euclidean matrix pairwise consistency
-* Cosine similarity matrix shape
-* Cosine similarity matrix diagonal
-* Cosine similarity matrix symmetry
+* Structured cosine matrix generation
+* Cosine matrix shape
+* Cosine matrix diagonal
+* Cosine matrix symmetry
 * Cosine matrix pairwise consistency
+* Collection matrix label-count validation
 
 ---
 
@@ -1178,7 +1325,7 @@ genome-embeddings/
 
 # Architecture
 
-The project currently separates sequence analysis into five responsibilities.
+The project currently separates sequence analysis into six responsibilities.
 
 ## Genome
 
@@ -1222,6 +1369,20 @@ The `GenomeCollection` class:
 * Generates descriptors for every genome
 * Calculates Euclidean distance matrices
 * Calculates cosine similarity matrices
+* Produces structured `GenomeMatrix` objects
+
+## GenomeMatrix
+
+The `GenomeMatrix` class:
+
+* Stores matrix labels
+* Stores numerical matrix values
+* Stores the comparison metric
+* Stores the k-mer length
+* Validates matrix dimensions
+* Validates label count
+* Validates the selected metric
+* Prepares matrix data for future lookup, ranking, export and visualization
 
 ## main.py
 
@@ -1231,8 +1392,8 @@ The demonstration program:
 * Loads one synthetic periodic control
 * Creates a `GenomeCollection`
 * Presents a detailed pairwise comparison
-* Generates multi-genome distance and similarity matrices
-* Prints matrices with readable labels
+* Generates structured multi-genome matrices
+* Prints matrix labels, values, metrics and k-mer resolution
 
 The resulting architecture is:
 
@@ -1269,18 +1430,26 @@ Multiple Genome objects
 GenomeCollection
        │
        ├── descriptors(k)
-       ├── euclidean_distance_matrix(k)
-       └── cosine_similarity_matrix(k)
+       ├── euclidean_distance_matrix(labels, k)
+       └── cosine_similarity_matrix(labels, k)
+                          │
+                          ▼
+                    GenomeMatrix
+                          │
+                          ├── labels
+                          ├── values
+                          ├── metric
+                          └── kmer_length
 ```
 
-The next architectural step will introduce a structured `GenomeMatrix` object containing:
+The next architectural steps will extend `GenomeMatrix` with:
 
-* Matrix values
-* Genome labels
-* Metric name
-* k-mer length
+* Label-based matrix lookup
+* Row-oriented conversion
+* Dictionary conversion
+* Matrix export
+* Similarity ranking
 * Future support for multiple k-mer lengths
-* Future export functionality
 
 ---
 
@@ -1300,6 +1469,7 @@ Rather than treating DNA or RNA as raw text, the project treats biological seque
 * Explained
 * Visualized
 * Converted into vectors
+* Organized into structured comparison matrices
 * Analyzed across multiple scales
 * Integrated with statistical models
 * Integrated with machine-learning systems
@@ -1311,6 +1481,7 @@ The project emphasizes:
 * Reproducibility
 * Explainable descriptors
 * Explainable comparisons
+* Structured comparison results
 * Multiscale sequence representation
 * Modular architecture
 * Automated testing
@@ -1472,6 +1643,7 @@ Current capabilities include:
 * Cosine similarity
 * Feature-level difference analysis
 * Structured pairwise comparison objects
+* Structured matrix comparison objects
 * Real CDS-to-CDS comparison
 * Multi-genome distance matrices
 * Multi-genome similarity matrices
@@ -1503,7 +1675,7 @@ Future capabilities may include:
 
 This phase will include:
 
-* Structured matrix objects
+* Matrix lookup and conversion
 * Matrix export
 * Similarity ranking
 * Clustering
