@@ -293,6 +293,31 @@ class GenomeMatrix:
             "metric": self.metric,
             "kmer_length": self.kmer_length,
         }
+    
+    def rank_by_label(
+        self,
+        label: str,
+    ) -> list[tuple[str, float]]:
+        reference_index = self._label_index(label)
+
+        ranking = [
+            (
+                candidate_label,
+                self.values[reference_index][candidate_index],
+            )
+            for candidate_index, candidate_label in enumerate(
+                self.labels
+            )
+            if candidate_index != reference_index
+        ]
+
+        reverse = self.metric == "cosine"
+
+        return sorted(
+            ranking,
+            key=lambda item: item[1],
+            reverse=reverse,
+        )
 
     def _label_index(
         self,

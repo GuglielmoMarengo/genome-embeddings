@@ -929,3 +929,97 @@ def test_genome_matrix_to_dict_returns_copies():
 
     assert matrix.labels[0] == "Genome A"
     assert matrix.values[0][0] == pytest.approx(0.0)
+
+def test_genome_matrix_rank_by_label_for_euclidean():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        values=[
+            [0.0, 0.2, 0.1],
+            [0.2, 0.0, 0.3],
+            [0.1, 0.3, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    ranking = matrix.rank_by_label(
+        label="Genome A",
+    )
+
+    assert ranking == [
+        ("Genome C", pytest.approx(0.1)),
+        ("Genome B", pytest.approx(0.2)),
+    ]
+
+def test_genome_matrix_rank_by_label_for_cosine():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        values=[
+            [1.0, 0.8, 0.95],
+            [0.8, 1.0, 0.7],
+            [0.95, 0.7, 1.0],
+        ],
+        metric="cosine",
+        kmer_length=3,
+    )
+
+    ranking = matrix.rank_by_label(
+        label="Genome A",
+    )
+
+    assert ranking == [
+        ("Genome C", pytest.approx(0.95)),
+        ("Genome B", pytest.approx(0.8)),
+    ]
+
+def test_genome_matrix_rank_by_label_excludes_reference():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+        ],
+        values=[
+            [0.0, 0.2],
+            [0.2, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    ranking = matrix.rank_by_label(
+        label="Genome A",
+    )
+
+    assert ranking == [
+        ("Genome B", pytest.approx(0.2)),
+    ]
+
+def test_genome_matrix_rank_by_label_rejects_unknown_label():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+        ],
+        values=[
+            [0.0, 0.2],
+            [0.2, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"Unknown genome matrix label: Unknown\.",
+    ):
+        matrix.rank_by_label(
+            label="Unknown",
+        )

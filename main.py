@@ -32,6 +32,22 @@ DISCOSOMA_FP583_PATH = (
     / "discosoma_fp583_cds.fasta"
 )
 
+STAPHYLOCOCCUS_AUREUS_CATA_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "controls"
+    / "biological"
+    / "staphylococcus_aureus_cata_cds.fasta"
+)
+
+SACCHAROMYCES_CEREVISIAE_TPI1_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "controls"
+    / "biological"
+    / "saccharomyces_cerevisiae_tpi1_cds.fasta"
+)
+
 PERIODIC_CONTROL_PATH = (
     PROJECT_ROOT
     / "data"
@@ -43,6 +59,8 @@ GENOME_LABELS = [
     "Aequorea GFP",
     "Acropora GFP",
     "Discosoma FP583",
+    "S. aureus catA",
+    "S. cerevisiae TPI1",
     "Periodic control",
 ]
 
@@ -209,6 +227,8 @@ def load_genomes() -> list[Genome]:
         Genome.from_fasta(AEQUOREA_GFP_PATH),
         Genome.from_fasta(ACROPORA_GFP_PATH),
         Genome.from_fasta(DISCOSOMA_FP583_PATH),
+        Genome.from_fasta(STAPHYLOCOCCUS_AUREUS_CATA_PATH),
+        Genome.from_fasta(SACCHAROMYCES_CEREVISIAE_TPI1_PATH),
         Genome.from_fasta(PERIODIC_CONTROL_PATH),
     ]
 
@@ -260,6 +280,24 @@ def main() -> None:
 
     print_genome_matrix(euclidean_matrix)
     print_genome_matrix(cosine_matrix)
+
+    euclidean_ranking = euclidean_matrix.rank_by_label(
+        label="Aequorea GFP",
+    )
+
+    cosine_ranking = cosine_matrix.rank_by_label(
+        label="Aequorea GFP",
+    )
+
+    print("\nEuclidean Ranking from Aequorea GFP:")
+
+    for label, value in euclidean_ranking:
+        print(f"{label}: {value:.4f}")
+
+    print("\nCosine Ranking from Aequorea GFP:")
+
+    for label, value in cosine_ranking:
+        print(f"{label}: {value:.4f}")
 
     print(
         "\nSelected Euclidean Distance:"

@@ -22,11 +22,12 @@ Genome Embeddings aims to build reusable representations of genomic and transcri
 * measured;
 * interpreted;
 * compared;
+* ranked;
 * converted into numerical vectors;
 * analyzed across multiple sequence scales;
 * integrated with statistical and machine-learning workflows.
 
-The current implementation focuses on explainable DNA descriptors, pairwise comparison and multi-genome comparison matrices.
+The current implementation focuses on explainable DNA descriptors, pairwise comparison, multi-genome comparison matrices and label-based similarity ranking.
 
 A major future direction is **multiscale representation**, combining information calculated across multiple k-mer lengths rather than relying on a single value of `k`.
 
@@ -76,6 +77,8 @@ A major future direction is **multiscale representation**, combining information
 * Label-based matrix lookup
 * Row-oriented matrix conversion
 * Dictionary matrix conversion
+* Label-based similarity and distance ranking
+* Biological negative controls
 
 ---
 
@@ -106,13 +109,13 @@ Run the tests:
 python -m pytest
 ```
 
-For detailed test output:
+For detailed output:
 
 ```bash
 python -m pytest -v
 ```
 
-The current test suite contains **71 tests**.
+The current test suite contains **75 tests**.
 
 ---
 
@@ -194,7 +197,7 @@ k-mer diversity
 normalized k-mer entropy
 ```
 
-Sequence length, AT content, pyrimidine content and k-mer length are excluded from the normalized vector because they are scale-dependent, redundant or configuration-related.
+Sequence length, AT content, pyrimidine content and k-mer length are excluded because they are scale-dependent, redundant or configuration-related.
 
 ---
 
@@ -456,6 +459,31 @@ Example:
 
 Conversion methods return copies of the underlying lists, preventing accidental modification of the original matrix.
 
+### Similarity and distance ranking
+
+A matrix can rank every other genome relative to a selected reference:
+
+```python
+ranking = matrix.rank_by_label(
+    label="Genome A",
+)
+```
+
+For Euclidean matrices, smaller values are ranked first.
+
+For cosine matrices, larger values are ranked first.
+
+The reference genome is excluded from its own ranking.
+
+Example Euclidean ranking:
+
+```python
+[
+    ("Genome C", 0.10),
+    ("Genome B", 0.20),
+]
+```
+
 ---
 
 ## Configurable k-mer Resolution
@@ -494,15 +522,17 @@ Higher values of `k` increase sparsity, computational cost and sensitivity to se
 
 ## Example Dataset
 
-The repository contains a small exploratory dataset of fluorescent-protein sequences.
+The repository contains fluorescent-protein sequences, two biological negative controls and one synthetic control.
 
-| File                               | Organism             |          Region | Length |
-| ---------------------------------- | -------------------- | --------------: | -----: |
-| `aequorea_victoria_gfp_cds.fasta`  | *Aequorea victoria*  |             CDS | 717 nt |
-| `aequorea_victoria_gfp_mrna.fasta` | *Aequorea victoria*  |   Complete mRNA | 922 nt |
-| `acropora_millepora_gfp_cds.fasta` | *Acropora millepora* |             CDS | 696 nt |
-| `discosoma_fp583_cds.fasta`        | *Discosoma* species  |             CDS | 678 nt |
-| `periodic_sequence.fasta`          | Synthetic control    | Repeated `ACGT` | 120 nt |
+| File                                      | Organism                   |          Region |             Length |
+| ----------------------------------------- | -------------------------- | --------------: | -----------------: |
+| `aequorea_victoria_gfp_cds.fasta`         | *Aequorea victoria*        |             CDS |             717 nt |
+| `aequorea_victoria_gfp_mrna.fasta`        | *Aequorea victoria*        |   Complete mRNA |             922 nt |
+| `acropora_millepora_gfp_cds.fasta`        | *Acropora millepora*       |             CDS |             696 nt |
+| `discosoma_fp583_cds.fasta`               | *Discosoma* species        |             CDS |             678 nt |
+| `staphylococcus_aureus_cata_cds.fasta`    | *Staphylococcus aureus*    |             CDS | Biological control |
+| `saccharomyces_cerevisiae_tpi1_cds.fasta` | *Saccharomyces cerevisiae* |             CDS | Biological control |
+| `periodic_sequence.fasta`                 | Synthetic control          | Repeated `ACGT` |             120 nt |
 
 The primary comparisons use equivalent coding regions:
 
@@ -511,6 +541,8 @@ CDS versus CDS
 ```
 
 The complete *Aequorea victoria* mRNA is retained for future experiments but is not used in the primary CDS comparison.
+
+The biological controls help evaluate whether the descriptor space separates sequence function, taxonomy, composition or other broad genomic properties.
 
 The synthetic periodic sequence is a methodological control and is not treated as a biological reference.
 
@@ -523,6 +555,8 @@ The demonstration compares:
 * *Aequorea victoria* GFP CDS
 * *Acropora millepora* GFP CDS
 * *Discosoma* FP583 CDS
+* *Staphylococcus aureus* `catA` CDS
+* *Saccharomyces cerevisiae* `TPI1` CDS
 * a synthetic periodic sequence
 
 ### Pairwise comparison
@@ -548,28 +582,62 @@ normalized_gc_skew: 0.0047
 ### Euclidean distance matrix
 
 ```text
-                      Aequorea GFP   Acropora GFP   Discosoma FP583   Periodic control
-Aequorea GFP                 0.0000         0.0656            0.1102             1.1187
-Acropora GFP                 0.0656         0.0000            0.0795             1.1358
-Discosoma FP583              0.1102         0.0795            0.0000             1.1393
-Periodic control             1.1187         1.1358            1.1393             0.0000
+                            Aequorea GFP   Acropora GFP   Discosoma FP583   S. aureus catA   S. cerevisiae TPI1   Periodic control
+Aequorea GFP                      0.0000         0.0656            0.1102            0.2074               0.0842             1.1187
+Acropora GFP                      0.0656         0.0000            0.0795            0.2649               0.0497             1.1358
+Discosoma FP583                   0.1102         0.0795            0.0000            0.2625               0.0710             1.1393
+S. aureus catA                    0.2074         0.2649            0.2625            0.0000               0.2544             1.0612
+S. cerevisiae TPI1                0.0842         0.0497            0.0710            0.2544               0.0000             1.1286
+Periodic control                  1.1187         1.1358            1.1393            1.0612               1.1286             0.0000
 ```
 
 ### Cosine similarity matrix
 
 ```text
-                      Aequorea GFP   Acropora GFP   Discosoma FP583   Periodic control
-Aequorea GFP                 1.0000         0.9996            0.9990             0.8071
-Acropora GFP                 0.9996         1.0000            0.9993             0.8110
-Discosoma FP583              0.9990         0.9993            1.0000             0.8189
-Periodic control             0.8071         0.8110            0.8189             1.0000
+                            Aequorea GFP   Acropora GFP   Discosoma FP583   S. aureus catA   S. cerevisiae TPI1   Periodic control
+Aequorea GFP                      1.0000         0.9996            0.9990            0.9954               0.9992             0.8071
+Acropora GFP                      0.9996         1.0000            0.9993            0.9930               0.9997             0.8110
+Discosoma FP583                   0.9990         0.9993            1.0000            0.9947               0.9995             0.8189
+S. aureus catA                    0.9954         0.9930            0.9947            1.0000               0.9936             0.7994
+S. cerevisiae TPI1                0.9992         0.9997            0.9995            0.9936               1.0000             0.8130
+Periodic control                  0.8071         0.8110            0.8189            0.7994               0.8130             1.0000
 ```
 
-Within the current descriptor space:
+### Ranking from *Aequorea victoria* GFP
 
-* the fluorescent-protein coding sequences form a compact group;
-* the periodic control is clearly separated;
-* Euclidean distance provides stronger numerical separation than cosine similarity.
+Euclidean ranking:
+
+```text
+Acropora GFP: 0.0656
+S. cerevisiae TPI1: 0.0842
+Discosoma FP583: 0.1102
+S. aureus catA: 0.2074
+Periodic control: 1.1187
+```
+
+Cosine ranking:
+
+```text
+Acropora GFP: 0.9996
+S. cerevisiae TPI1: 0.9992
+Discosoma FP583: 0.9990
+S. aureus catA: 0.9954
+Periodic control: 0.8071
+```
+
+### Interpretation
+
+Within the current six-dimensional descriptor space:
+
+* the synthetic periodic control remains strongly separated;
+* the bacterial `catA` CDS is separated from the compact eukaryotic group;
+* the eukaryotic `TPI1` control is close to the fluorescent-protein CDS sequences;
+* Euclidean distance provides stronger numerical separation than cosine similarity;
+* cosine similarity is highly compressed among biological sequences.
+
+The proximity of `TPI1` to the fluorescent-protein CDS sequences shows that the current representation does not yet distinguish protein function.
+
+It likely captures broad compositional, taxonomic or coding-sequence properties.
 
 These observations are preliminary and do not represent biological validation.
 
@@ -614,7 +682,8 @@ GenomeCollection
                        │
                        ├── get_value()
                        ├── to_rows()
-                       └── to_dict()
+                       ├── to_dict()
+                       └── rank_by_label()
 ```
 
 ---
@@ -630,6 +699,9 @@ genome-embeddings/
 │   │   ├── acropora_millepora_gfp_cds.fasta
 │   │   └── discosoma_fp583_cds.fasta
 │   └── controls/
+│       ├── biological/
+│       │   ├── staphylococcus_aureus_cata_cds.fasta
+│       │   └── saccharomyces_cerevisiae_tpi1_cds.fasta
 │       └── periodic_sequence.fasta
 ├── src/
 │   └── genome.py
@@ -663,7 +735,7 @@ The current implementation validates:
 * matrix dimensions;
 * matrix label counts;
 * supported matrix metrics;
-* unknown matrix lookup labels.
+* unknown lookup and ranking labels.
 
 RNA and ambiguous nucleotide support are planned.
 
@@ -683,8 +755,8 @@ RNA and ambiguous nucleotide support are planned.
 * [x] Label-based matrix lookup
 * [x] Matrix row conversion
 * [x] Matrix dictionary conversion
-* [ ] Biological negative controls
-* [ ] Similarity ranking
+* [x] Biological negative controls
+* [x] Similarity ranking
 * [ ] Matrix export
 * [ ] Heatmap visualization
 * [ ] Clustering
@@ -695,6 +767,8 @@ RNA and ambiguous nucleotide support are planned.
 * [ ] Multi-k descriptor comparison
 * [ ] Multi-k matrix comparison
 * [ ] Cross-scale stability analysis
+* [ ] Matrix-geometry trajectories
+* [ ] Multiscale mutation signatures
 * [ ] Multiscale genome embeddings
 * [ ] Scale weighting
 * [ ] Cross-scale normalization
@@ -751,9 +825,23 @@ Each value of `k` will be evaluated independently to study:
 * sparsity;
 * dependence on sequence length.
 
+### Matrix-geometry trajectories
+
+Each comparison matrix can be transformed into a vector containing its unique pairwise values.
+
+Repeating the process across multiple values of `k` will produce a trajectory describing how the global geometry of the dataset changes with sequence resolution.
+
+This may support the identification of:
+
+* stable sequence relationships;
+* scale-dependent relationships;
+* abrupt geometric changes;
+* sequence pairs driving matrix deformation;
+* multiscale mutation signatures.
+
 ### Multiscale embeddings
 
-Features derived from multiple values of `k` will be combined into one representation:
+Features derived from multiple values of `k` will eventually be combined into one representation:
 
 ```text
 global descriptors
@@ -775,13 +863,13 @@ Key research topics will include normalization, weighting, redundancy, sparsity 
 
 ---
 
-## Research Question
+## Research Questions
 
 > Can interpretable mathematical descriptors produce biologically meaningful, robust and reusable embeddings of genomic and transcriptomic data?
 
-A complementary multiscale question is:
-
 > Can information across multiple sequence resolutions be combined into more informative embeddings without sacrificing interpretability?
+
+> Can multiscale comparison geometries support an exploratory method for detecting and characterizing mutation signatures?
 
 ---
 
