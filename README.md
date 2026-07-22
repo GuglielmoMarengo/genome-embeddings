@@ -107,6 +107,9 @@ The long-term objective is to investigate whether interpretable mathematical des
 * Empty and duplicate `k` validation
 * Matrix-geometry trajectories
 * Pair-specific trajectories
+* Signed pair-trajectory step differences
+* Cross-scale matrix-trajectory distances
+* Pair contributions to matrix deformation
 * Euclidean and cosine sensitivity analysis across `k`
 
 ### Visualization
@@ -155,7 +158,7 @@ For detailed output:
 python -m pytest -v
 ```
 
-The current test suite contains **126 tests**.
+The current test suite contains **140 tests**.
 
 ---
 
@@ -836,6 +839,132 @@ Pair trajectories make it possible to investigate whether the relationship betwe
 
 ---
 
+## Cross-Scale Change Analysis
+
+The project can now quantify the changes observed between consecutive k-mer scales. The insertion order of `k_values` defines the trajectory order, so non-monotonic sequences such as `[3, 1, 2]` remain valid and are analyzed in that exact order.
+
+### Pair-trajectory step differences
+
+Signed changes between consecutive pair-trajectory values are calculated with:
+
+```python
+differences = (
+    GenomeCollection
+    .pair_trajectory_step_differences(
+        {
+            1: 0.0635,
+            2: 0.0641,
+            3: 0.0656,
+            4: 0.0862,
+        }
+    )
+)
+```
+
+Example result:
+
+```python
+{
+    (1, 2): 0.0006,
+    (2, 3): 0.0015,
+    (3, 4): 0.0206,
+}
+```
+
+Positive values indicate an increase in distance or similarity. Negative values indicate a decrease. The metric determines the scientific interpretation of the sign.
+
+Metric-specific convenience methods are also available:
+
+```python
+collection.euclidean_pair_trajectory_step_differences(
+    labels=labels,
+    row_label="Genome A",
+    column_label="Genome B",
+    k_values=[1, 2, 3, 4],
+)
+
+collection.cosine_pair_trajectory_step_differences(
+    labels=labels,
+    row_label="Genome A",
+    column_label="Genome B",
+    k_values=[1, 2, 3, 4],
+)
+```
+
+### Matrix-trajectory step distances
+
+The Euclidean distance between consecutive upper-triangle vectors quantifies how much the global comparison geometry changes between scales:
+
+```python
+step_distances = (
+    GenomeCollection
+    .matrix_trajectory_step_distances(
+        trajectory
+    )
+)
+```
+
+For consecutive vectors `Mₖ` and `Mₖ₊₁`:
+
+```text
+step distance = sqrt(Σ (Mₖ₊₁[i] - Mₖ[i])²)
+```
+
+Metric-specific methods can calculate these values directly from a collection:
+
+```python
+collection.euclidean_matrix_trajectory_step_distances(
+    labels=labels,
+    k_values=[1, 2, 3, 4],
+)
+
+collection.cosine_matrix_trajectory_step_distances(
+    labels=labels,
+    k_values=[1, 2, 3, 4],
+)
+```
+
+### Pair contributions to matrix deformation
+
+A global matrix change can be decomposed into the contribution of each unique genome pair:
+
+```python
+contributions = (
+    GenomeCollection
+    .matrix_trajectory_pair_contributions(
+        labels=labels,
+        trajectory=trajectory,
+    )
+)
+```
+
+Each transition contains rows with:
+
+```text
+row_label
+column_label
+difference
+absolute_difference
+```
+
+Rows are sorted by decreasing absolute change, making it possible to identify which genome relationships drive the deformation of the full matrix.
+
+Convenience methods are available for both metrics:
+
+```python
+collection.euclidean_matrix_pair_contributions(
+    labels=labels,
+    k_values=[1, 2, 3, 4],
+)
+
+collection.cosine_matrix_pair_contributions(
+    labels=labels,
+    k_values=[1, 2, 3, 4],
+)
+```
+
+---
+
 ## Visualization
 
 Visualization functions are implemented in:
@@ -1136,6 +1265,12 @@ The descriptors likely capture broad compositional, taxonomic or coding-sequence
 
 These results are preliminary and do not represent biological validation.
 
+The cross-scale analysis now distinguishes three complementary levels of change:
+
+* pair step differences quantify how one selected relationship changes;
+* matrix step distances quantify deformation of the complete dataset geometry;
+* pair-contribution rankings identify which relationships drive that deformation.
+
 ---
 
 ## Demonstration Program
@@ -1153,6 +1288,9 @@ These results are preliminary and do not represent biological validation.
 * multi-`k` matrix generation;
 * matrix-geometry trajectories;
 * pair-specific trajectories;
+* signed pair-trajectory step differences;
+* cross-scale matrix distances;
+* pair contributions to matrix deformation;
 * heatmap generation;
 * pair-trajectory plotting;
 * matrix distributions;
@@ -1221,7 +1359,10 @@ GenomeCollection
       ├── euclidean_matrix_trajectory()
       ├── cosine_matrix_trajectory()
       ├── euclidean_pair_trajectory()
-      └── cosine_pair_trajectory()
+      ├── cosine_pair_trajectory()
+      ├── pair_trajectory_step_differences()
+      ├── matrix_trajectory_step_distances()
+      └── matrix_trajectory_pair_contributions()
                        │
                        ▼
                  GenomeMatrix
@@ -1271,6 +1412,7 @@ genome-embeddings/
 │   ├── data/
 │   │   └── example.fasta
 │   ├── test_genome.py
+│   ├── test_multiscale_analysis.py
 │   └── test_visualization.py
 ├── .gitignore
 ├── main.py
@@ -1304,6 +1446,10 @@ The current implementation validates:
 * unknown matrix labels;
 * empty multi-`k` requests;
 * duplicate k-mer lengths;
+* trajectories with fewer than two scales;
+* inconsistent matrix-trajectory vector dimensions;
+* matrix-vector and label-pair mismatches;
+* duplicate or empty labels in contribution analysis;
 * empty visualization trajectories;
 * empty distribution vectors;
 * invalid histogram bins;
@@ -1369,9 +1515,9 @@ The visualization tests verify:
 * [x] Initial k-mer sensitivity analysis
 * [x] Matrix-geometry trajectories
 * [x] Pair-specific trajectories
-* [ ] Pair-trajectory step differences
-* [ ] Cross-scale matrix distances
-* [ ] Pair contributions to matrix deformation
+* [x] Pair-trajectory step differences
+* [x] Cross-scale matrix distances
+* [x] Pair contributions to matrix deformation
 * [ ] Cross-scale stability metrics
 * [ ] Ranking stability analysis
 * [ ] Clustering stability analysis
@@ -1484,7 +1630,7 @@ The visualization layer provides graphical views of:
 * changes across k-mer scales;
 * pair-specific trajectories.
 
-Visual evidence remains exploratory and must later be supported by formal stability metrics and statistical testing.
+Visual evidence remains exploratory. The newly implemented step differences, matrix-trajectory distances and pair-contribution rankings provide the first quantitative layer beneath those visual patterns, but they still require statistical and biological validation.
 
 ### Future multiscale embeddings
 

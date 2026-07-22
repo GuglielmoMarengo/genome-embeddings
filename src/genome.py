@@ -511,6 +511,199 @@ class GenomeCollection:
             for k, matrix in matrices.items()
         }
 
+    @staticmethod
+    def _validate_trajectory_steps(
+        trajectory: dict[int, object],
+        trajectory_name: str,
+    ) -> None:
+        if not trajectory:
+            raise ValueError(
+                f"{trajectory_name} cannot be empty."
+            )
+
+        if len(trajectory) < 2:
+            raise ValueError(
+                f"{trajectory_name} must contain "
+                "at least two k-mer scales."
+            )
+
+    @staticmethod
+    def pair_trajectory_step_differences(
+        trajectory: dict[int, float],
+    ) -> dict[tuple[int, int], float]:
+        GenomeCollection._validate_trajectory_steps(
+            trajectory=trajectory,
+            trajectory_name="Pair trajectory",
+        )
+
+        trajectory_items = list(trajectory.items())
+
+        return {
+            (first_k, second_k): (
+                second_value - first_value
+            )
+            for (
+                first_k,
+                first_value,
+            ), (
+                second_k,
+                second_value,
+            ) in zip(
+                trajectory_items,
+                trajectory_items[1:],
+            )
+        }
+
+    @staticmethod
+    def matrix_trajectory_step_distances(
+        trajectory: dict[int, list[float]],
+    ) -> dict[tuple[int, int], float]:
+        GenomeCollection._validate_trajectory_steps(
+            trajectory=trajectory,
+            trajectory_name="Matrix trajectory",
+        )
+
+        vector_lengths = {
+            len(vector)
+            for vector in trajectory.values()
+        }
+
+        if 0 in vector_lengths:
+            raise ValueError(
+                "Matrix trajectory vectors cannot be empty."
+            )
+
+        if len(vector_lengths) != 1:
+            raise ValueError(
+                "Matrix trajectory vectors must have "
+                "the same length."
+            )
+
+        trajectory_items = list(trajectory.items())
+
+        return {
+            (first_k, second_k): math.sqrt(
+                sum(
+                    (second_value - first_value) ** 2
+                    for (
+                        first_value,
+                        second_value,
+                    ) in zip(
+                        first_vector,
+                        second_vector,
+                        strict=True,
+                    )
+                )
+            )
+            for (
+                first_k,
+                first_vector,
+            ), (
+                second_k,
+                second_vector,
+            ) in zip(
+                trajectory_items,
+                trajectory_items[1:],
+            )
+        }
+
+    @staticmethod
+    def matrix_trajectory_pair_contributions(
+        labels: list[str],
+        trajectory: dict[int, list[float]],
+    ) -> dict[
+        tuple[int, int],
+        list[dict[str, str | float]],
+    ]:
+        GenomeCollection._validate_trajectory_steps(
+            trajectory=trajectory,
+            trajectory_name="Matrix trajectory",
+        )
+
+        if not labels:
+            raise ValueError(
+                "Genome labels cannot be empty."
+            )
+
+        if len(labels) != len(set(labels)):
+            raise ValueError(
+                "Genome labels must be unique."
+            )
+
+        pairs = [
+            (labels[row_index], labels[column_index])
+            for row_index in range(len(labels))
+            for column_index in range(
+                row_index + 1,
+                len(labels),
+            )
+        ]
+
+        expected_vector_length = len(pairs)
+
+        if any(
+            len(vector) != expected_vector_length
+            for vector in trajectory.values()
+        ):
+            raise ValueError(
+                "Matrix trajectory vector length must "
+                "match the number of unique label pairs."
+            )
+
+        trajectory_items = list(trajectory.items())
+        contributions: dict[
+            tuple[int, int],
+            list[dict[str, str | float]],
+        ] = {}
+
+        for (
+            first_k,
+            first_vector,
+        ), (
+            second_k,
+            second_vector,
+        ) in zip(
+            trajectory_items,
+            trajectory_items[1:],
+        ):
+            step_rows = [
+                {
+                    "row_label": row_label,
+                    "column_label": column_label,
+                    "difference": (
+                        second_value - first_value
+                    ),
+                    "absolute_difference": abs(
+                        second_value - first_value
+                    ),
+                }
+                for (
+                    row_label,
+                    column_label,
+                ), (
+                    first_value,
+                    second_value,
+                ) in zip(
+                    pairs,
+                    zip(
+                        first_vector,
+                        second_vector,
+                        strict=True,
+                    ),
+                    strict=True,
+                )
+            ]
+
+            contributions[(first_k, second_k)] = sorted(
+                step_rows,
+                key=lambda row: row[
+                    "absolute_difference"
+                ],
+                reverse=True,
+            )
+
+        return contributions
+
     def euclidean_distance_matrix(
         self,
         labels: list[str],
@@ -567,6 +760,56 @@ class GenomeCollection:
             matrices_builder=self.euclidean_distance_matrices,
         )
 
+    def euclidean_pair_trajectory_step_differences(
+        self,
+        labels: list[str],
+        row_label: str,
+        column_label: str,
+        k_values: list[int],
+    ) -> dict[tuple[int, int], float]:
+        trajectory = self.euclidean_pair_trajectory(
+            labels=labels,
+            row_label=row_label,
+            column_label=column_label,
+            k_values=k_values,
+        )
+
+        return self.pair_trajectory_step_differences(
+            trajectory
+        )
+
+    def euclidean_matrix_trajectory_step_distances(
+        self,
+        labels: list[str],
+        k_values: list[int],
+    ) -> dict[tuple[int, int], float]:
+        trajectory = self.euclidean_matrix_trajectory(
+            labels=labels,
+            k_values=k_values,
+        )
+
+        return self.matrix_trajectory_step_distances(
+            trajectory
+        )
+
+    def euclidean_matrix_pair_contributions(
+        self,
+        labels: list[str],
+        k_values: list[int],
+    ) -> dict[
+        tuple[int, int],
+        list[dict[str, str | float]],
+    ]:
+        trajectory = self.euclidean_matrix_trajectory(
+            labels=labels,
+            k_values=k_values,
+        )
+
+        return self.matrix_trajectory_pair_contributions(
+            labels=labels,
+            trajectory=trajectory,
+        )
+
     def cosine_similarity_matrix(
         self,
         labels: list[str],
@@ -621,6 +864,56 @@ class GenomeCollection:
             column_label=column_label,
             k_values=k_values,
             matrices_builder=self.cosine_similarity_matrices,
+        )
+
+    def cosine_pair_trajectory_step_differences(
+        self,
+        labels: list[str],
+        row_label: str,
+        column_label: str,
+        k_values: list[int],
+    ) -> dict[tuple[int, int], float]:
+        trajectory = self.cosine_pair_trajectory(
+            labels=labels,
+            row_label=row_label,
+            column_label=column_label,
+            k_values=k_values,
+        )
+
+        return self.pair_trajectory_step_differences(
+            trajectory
+        )
+
+    def cosine_matrix_trajectory_step_distances(
+        self,
+        labels: list[str],
+        k_values: list[int],
+    ) -> dict[tuple[int, int], float]:
+        trajectory = self.cosine_matrix_trajectory(
+            labels=labels,
+            k_values=k_values,
+        )
+
+        return self.matrix_trajectory_step_distances(
+            trajectory
+        )
+
+    def cosine_matrix_pair_contributions(
+        self,
+        labels: list[str],
+        k_values: list[int],
+    ) -> dict[
+        tuple[int, int],
+        list[dict[str, str | float]],
+    ]:
+        trajectory = self.cosine_matrix_trajectory(
+            labels=labels,
+            k_values=k_values,
+        )
+
+        return self.matrix_trajectory_pair_contributions(
+            labels=labels,
+            trajectory=trajectory,
         )
 
     @staticmethod

@@ -335,6 +335,77 @@ def print_pair_trajectory(
         )
 
 
+def print_pair_step_differences(
+    differences: dict[tuple[int, int], float],
+    row_label: str,
+    column_label: str,
+    metric_name: str,
+) -> None:
+    print(
+        f"\n{row_label} -> "
+        f"{column_label} "
+        f"{metric_name} Step Differences:"
+    )
+
+    for (first_k, second_k), difference in (
+        differences.items()
+    ):
+        print(
+            f"k={first_k} -> k={second_k}: "
+            f"{difference:+.6f}"
+        )
+
+
+def print_matrix_step_distances(
+    distances: dict[tuple[int, int], float],
+    metric_name: str,
+) -> None:
+    print(
+        f"\n{metric_name} "
+        "Matrix-Trajectory Step Distances:"
+    )
+
+    for (first_k, second_k), distance in (
+        distances.items()
+    ):
+        print(
+            f"k={first_k} -> k={second_k}: "
+            f"{distance:.6f}"
+        )
+
+
+def print_top_pair_contributions(
+    contributions: dict[
+        tuple[int, int],
+        list[dict[str, str | float]],
+    ],
+    metric_name: str,
+    limit: int = 3,
+) -> None:
+    print(
+        f"\nTop {metric_name} Pair Contributions "
+        "to Matrix Deformation:"
+    )
+
+    for (first_k, second_k), rows in (
+        contributions.items()
+    ):
+        print(
+            f"k={first_k} -> k={second_k}:"
+        )
+
+        for row in rows[:limit]:
+            print(
+                "  "
+                f"{row['row_label']} -> "
+                f"{row['column_label']}: "
+                f"difference="
+                f"{row['difference']:+.6f}, "
+                f"absolute="
+                f"{row['absolute_difference']:.6f}"
+            )
+
+
 def load_genomes() -> list[Genome]:
     return [
         Genome.from_fasta(
@@ -657,6 +728,96 @@ def main() -> None:
         ),
         row_label=REFERENCE_LABEL,
         column_label=COMPARISON_LABEL,
+        metric_name="Cosine",
+    )
+
+    euclidean_pair_step_differences = (
+        collection
+        .pair_trajectory_step_differences(
+            euclidean_pair_trajectory
+        )
+    )
+
+    cosine_pair_step_differences = (
+        collection
+        .pair_trajectory_step_differences(
+            cosine_pair_trajectory
+        )
+    )
+
+    euclidean_matrix_step_distances = (
+        collection
+        .matrix_trajectory_step_distances(
+            euclidean_trajectory
+        )
+    )
+
+    cosine_matrix_step_distances = (
+        collection
+        .matrix_trajectory_step_distances(
+            cosine_trajectory
+        )
+    )
+
+    euclidean_pair_contributions = (
+        collection
+        .matrix_trajectory_pair_contributions(
+            labels=GENOME_LABELS,
+            trajectory=euclidean_trajectory,
+        )
+    )
+
+    cosine_pair_contributions = (
+        collection
+        .matrix_trajectory_pair_contributions(
+            labels=GENOME_LABELS,
+            trajectory=cosine_trajectory,
+        )
+    )
+
+    print_pair_step_differences(
+        differences=(
+            euclidean_pair_step_differences
+        ),
+        row_label=REFERENCE_LABEL,
+        column_label=COMPARISON_LABEL,
+        metric_name="Euclidean",
+    )
+
+    print_pair_step_differences(
+        differences=(
+            cosine_pair_step_differences
+        ),
+        row_label=REFERENCE_LABEL,
+        column_label=COMPARISON_LABEL,
+        metric_name="Cosine",
+    )
+
+    print_matrix_step_distances(
+        distances=(
+            euclidean_matrix_step_distances
+        ),
+        metric_name="Euclidean",
+    )
+
+    print_matrix_step_distances(
+        distances=(
+            cosine_matrix_step_distances
+        ),
+        metric_name="Cosine",
+    )
+
+    print_top_pair_contributions(
+        contributions=(
+            euclidean_pair_contributions
+        ),
+        metric_name="Euclidean",
+    )
+
+    print_top_pair_contributions(
+        contributions=(
+            cosine_pair_contributions
+        ),
         metric_name="Cosine",
     )
 
