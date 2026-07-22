@@ -4,6 +4,9 @@
 [![License](https://img.shields.io/github/license/GuglielmoMarengo/genome-embeddings)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/GuglielmoMarengo/genome-embeddings)](https://github.com/GuglielmoMarengo/genome-embeddings/commits/main)
 [![Status](https://img.shields.io/badge/Status-In%20Development-orange)](https://github.com/GuglielmoMarengo/genome-embeddings)
+[![Tests](https://img.shields.io/badge/Tests-140%20passing-brightgreen)](tests)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-blue)](SECURITY.md)
+[![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen)](CONTRIBUTING.md)
 
 **Turning genomes into mathematics.**
 
@@ -19,7 +22,10 @@ The current implementation supports:
 * matrix serialization;
 * multiscale k-mer sensitivity analysis;
 * matrix-geometry trajectories;
-* graphical analysis through heatmaps, distributions and trajectory plots.
+* cross-scale trajectory-change analysis;
+* pair contributions to matrix deformation;
+* graphical analysis through heatmaps, distributions and trajectory plots;
+* structured security, contribution and issue-reporting workflows.
 
 > This project is currently intended for research and software-development purposes. Any future clinical or diagnostic use would require extensive biological, statistical, clinical and regulatory validation.
 
@@ -40,6 +46,21 @@ Genome Embeddings aims to develop reusable representations of genomic and transc
 * integrated with statistical and machine-learning workflows.
 
 The long-term objective is to investigate whether interpretable mathematical descriptors can produce robust and biologically meaningful genomic embeddings without sacrificing transparency.
+
+---
+
+## Project Principles
+
+The project follows these principles:
+
+1. **Interpretability before complexity**
+2. **Tests before or alongside implementation**
+3. **Explicit mathematical definitions**
+4. **Small and reviewable changes**
+5. **Separation between analysis and visualization**
+6. **Reproducible behavior**
+7. **No unsupported biological or clinical claims**
+8. **One descriptor family or analytical concept at a time**
 
 ---
 
@@ -123,6 +144,16 @@ The long-term objective is to investigate whether interpretable mathematical des
 * Automatic output-directory creation
 * Headless visualization testing
 
+### Repository governance
+
+* Security policy
+* Private vulnerability-reporting guidance
+* Contribution guidelines
+* Code of conduct
+* Structured bug-report form
+* Structured feature-request form
+* Public-issue restrictions for security vulnerabilities
+
 ---
 
 ## Installation
@@ -132,6 +163,24 @@ Clone the repository:
 ```bash
 git clone https://github.com/GuglielmoMarengo/genome-embeddings.git
 cd genome-embeddings
+```
+
+Create a virtual environment if desired:
+
+```bash
+python -m venv .venv
+```
+
+Activate it on Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Activate it on Linux or macOS:
+
+```bash
+source .venv/bin/activate
 ```
 
 Install the dependencies:
@@ -158,7 +207,7 @@ For detailed output:
 python -m pytest -v
 ```
 
-The current test suite contains **140 tests**.
+The current test suite contains **140 passing tests**.
 
 ---
 
@@ -841,7 +890,9 @@ Pair trajectories make it possible to investigate whether the relationship betwe
 
 ## Cross-Scale Change Analysis
 
-The project can now quantify the changes observed between consecutive k-mer scales. The insertion order of `k_values` defines the trajectory order, so non-monotonic sequences such as `[3, 1, 2]` remain valid and are analyzed in that exact order.
+The project can quantify changes between consecutive k-mer scales.
+
+The insertion order of `k_values` defines the trajectory order, so non-monotonic sequences such as `[3, 1, 2]` remain valid and are analyzed in that exact order.
 
 ### Pair-trajectory step differences
 
@@ -861,7 +912,7 @@ differences = (
 )
 ```
 
-Example result:
+Example:
 
 ```python
 {
@@ -871,7 +922,7 @@ Example result:
 }
 ```
 
-Positive values indicate an increase in distance or similarity. Negative values indicate a decrease. The metric determines the scientific interpretation of the sign.
+Positive values indicate an increase in distance or similarity. Negative values indicate a decrease. The metric determines the interpretation of the sign.
 
 Metric-specific convenience methods are also available:
 
@@ -1239,6 +1290,42 @@ k=3: 0.9996
 k=4: 0.9994
 ```
 
+### Pair-trajectory step differences
+
+Euclidean:
+
+```text
+k=1 -> k=2: +0.000584
+k=2 -> k=3: +0.001426
+k=3 -> k=4: +0.020621
+```
+
+Cosine:
+
+```text
+k=1 -> k=2: -0.000004
+k=2 -> k=3: +0.000038
+k=3 -> k=4: -0.000237
+```
+
+### Matrix-trajectory step distances
+
+Euclidean:
+
+```text
+k=1 -> k=2: 1.702979
+k=2 -> k=3: 0.499185
+k=3 -> k=4: 0.264115
+```
+
+Cosine:
+
+```text
+k=1 -> k=2: 0.233006
+k=2 -> k=3: 0.185453
+k=3 -> k=4: 0.035751
+```
+
 ---
 
 ## Interpretation
@@ -1250,7 +1337,10 @@ Within the current descriptor space:
 * the eukaryotic `TPI1` control remains close to the fluorescent-protein CDS sequences;
 * Euclidean distance provides stronger numerical separation than cosine similarity;
 * cosine similarity remains highly compressed among biological sequences;
-* the *Aequorea*–*Acropora* Euclidean relationship is stable for `k = 1, 2, 3` and changes more visibly at `k = 4`.
+* the *Aequorea*–*Acropora* Euclidean relationship is stable for `k = 1, 2, 3` and changes more visibly at `k = 4`;
+* the largest global matrix deformation occurs between `k = 1` and `k = 2`;
+* many of the strongest cross-scale changes involve the synthetic periodic control;
+* more specific changes between biological sequences begin to appear at higher `k`.
 
 The visualizations make these patterns easier to inspect:
 
@@ -1263,13 +1353,13 @@ The proximity of `TPI1` to the fluorescent-protein sequences shows that the curr
 
 The descriptors likely capture broad compositional, taxonomic or coding-sequence properties.
 
-These results are preliminary and do not represent biological validation.
-
-The cross-scale analysis now distinguishes three complementary levels of change:
+The cross-scale analysis distinguishes three complementary levels of change:
 
 * pair step differences quantify how one selected relationship changes;
 * matrix step distances quantify deformation of the complete dataset geometry;
 * pair-contribution rankings identify which relationships drive that deformation.
+
+These results are preliminary and do not represent biological validation.
 
 ---
 
@@ -1393,6 +1483,11 @@ GenomeCollection
 
 ```text
 genome-embeddings/
+├── .github/
+│   └── ISSUE_TEMPLATE/
+│       ├── bug_report.yml
+│       ├── feature_request.yml
+│       └── config.yml
 ├── data/
 │   ├── fluorescent_proteins/
 │   │   ├── aequorea_victoria_gfp_mrna.fasta
@@ -1415,10 +1510,13 @@ genome-embeddings/
 │   ├── test_multiscale_analysis.py
 │   └── test_visualization.py
 ├── .gitignore
-├── main.py
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── LICENSE
 ├── README.md
-├── requirements.txt
-└── LICENSE
+├── SECURITY.md
+├── main.py
+└── requirements.txt
 ```
 
 `outputs/` is generated automatically and excluded from Git.
@@ -1482,6 +1580,89 @@ The visualization tests verify:
 
 ---
 
+## Contributing
+
+Contributions are welcome.
+
+Before contributing, read:
+
+* [Contribution Guidelines](CONTRIBUTING.md)
+* [Code of Conduct](CODE_OF_CONDUCT.md)
+* [Security Policy](SECURITY.md)
+
+Bug reports and feature proposals should use the structured GitHub issue forms.
+
+Before submitting a pull request, run:
+
+```bash
+python -m pytest
+python main.py
+```
+
+Generated files under `outputs/` must not be committed.
+
+---
+
+## Reporting Bugs
+
+Use the repository's **Bug report** issue form.
+
+Include:
+
+* a minimal reproducible example;
+* expected behavior;
+* actual behavior;
+* traceback or relevant output;
+* Python version;
+* operating system;
+* sequence and k-mer characteristics.
+
+Do not upload sensitive, proprietary, clinical or personally identifiable genomic data.
+
+---
+
+## Requesting Features
+
+Use the repository's **Feature request** issue form.
+
+Feature proposals should explain:
+
+* the problem being solved;
+* proposed behavior;
+* mathematical or scientific motivation;
+* interpretation and limitations;
+* suggested tests;
+* architecture and compatibility impact;
+* relevant references.
+
+---
+
+## Security
+
+Suspected security vulnerabilities must not be reported through public issues, discussions or pull requests.
+
+Read the [Security Policy](SECURITY.md) and use GitHub Private Vulnerability Reporting when available.
+
+Security-relevant concerns may include:
+
+* unsafe handling of untrusted files;
+* path traversal;
+* unintended file access;
+* arbitrary code execution;
+* denial-of-service inputs;
+* exposed credentials;
+* vulnerable dependencies.
+
+---
+
+## Code of Conduct
+
+Participation in Genome Embeddings is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+Technical and scientific disagreement is welcome when it remains respectful, evidence-based and focused on ideas rather than individuals.
+
+---
+
 ## Roadmap
 
 ### Core representation
@@ -1518,6 +1699,7 @@ The visualization tests verify:
 * [x] Pair-trajectory step differences
 * [x] Cross-scale matrix distances
 * [x] Pair contributions to matrix deformation
+* [ ] Full-dataset versus biological-only comparison
 * [ ] Cross-scale stability metrics
 * [ ] Ranking stability analysis
 * [ ] Clustering stability analysis
@@ -1544,6 +1726,18 @@ The visualization tests verify:
 * [ ] Clustering dendrograms
 * [ ] Dimensionality-reduction plots
 * [ ] Permanent README figures under `docs/images/`
+
+### Repository governance and security
+
+* [x] Security policy
+* [x] Contribution guidelines
+* [x] Code of conduct
+* [x] Bug-report issue form
+* [x] Feature-request issue form
+* [x] Private security-reporting link
+* [ ] Dependabot version-update configuration
+* [ ] Continuous-integration test workflow
+* [ ] Automated code-quality checks
 
 ### Future descriptors and metrics
 
@@ -1630,7 +1824,7 @@ The visualization layer provides graphical views of:
 * changes across k-mer scales;
 * pair-specific trajectories.
 
-Visual evidence remains exploratory. The newly implemented step differences, matrix-trajectory distances and pair-contribution rankings provide the first quantitative layer beneath those visual patterns, but they still require statistical and biological validation.
+Visual evidence remains exploratory. The implemented step differences, matrix-trajectory distances and pair-contribution rankings provide a first quantitative layer beneath those visual patterns, but they still require statistical and biological validation.
 
 ### Future multiscale embeddings
 
@@ -1672,6 +1866,8 @@ Important research topics include:
 
 > Can matrix-geometry trajectories reveal stable, scale-dependent or anomalous sequence relationships?
 
+> Which sequence pairs drive changes in dataset geometry across k-mer scales?
+
 > Can graphical analysis expose meaningful multiscale patterns that can later be quantified through formal stability metrics?
 
 > Can multiscale comparison geometries support an exploratory method for detecting and characterizing mutation signatures?
@@ -1685,6 +1881,7 @@ Important research topics include:
 * The descriptor vector contains a limited number of aggregated features.
 * Sliding-window triplets are not equivalent to reading-frame-aware codons.
 * The example dataset is too small for biological validation.
+* The synthetic periodic control dominates several global cross-scale changes.
 * Cosine similarity is highly compressed in the current descriptor space.
 * Histograms currently contain only 15 unique pairwise observations for the six-sequence dataset.
 * Box plots summarize small exploratory samples.

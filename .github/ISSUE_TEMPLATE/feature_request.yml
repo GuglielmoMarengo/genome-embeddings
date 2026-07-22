@@ -1,0 +1,108 @@
+name: Feature request
+description: Propose a new descriptor, metric, analysis or project improvement
+title: "[Feature]: "
+labels:
+  - enhancement
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for proposing an improvement.
+
+        For substantial mathematical or biological features, explain the definition, motivation, expected interpretation and limitations.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Preliminary checks
+      options:
+        - label: I searched the existing issues and roadmap for similar proposals.
+          required: true
+        - label: I have described the problem before the proposed implementation.
+          required: true
+        - label: I understand that exploratory results must not be presented as biological or clinical validation.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or research need
+      description: What technical, mathematical or scientific problem would this feature address?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior or API you would like to introduce.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature category
+      options:
+        - Sequence analysis
+        - Mathematical descriptor
+        - Distance or similarity metric
+        - Multiscale analysis
+        - Visualization
+        - Export or serialization
+        - FASTA or data handling
+        - Testing or validation
+        - Documentation
+        - Packaging or command-line interface
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: definition
+    attributes:
+      label: Mathematical or technical definition
+      description: Include formulas, ranges, normalization rules or algorithms when relevant.
+      placeholder: |
+        Definition:
+        Expected range:
+        Normalization:
+        Edge cases:
+
+  - type: textarea
+    id: interpretation
+    attributes:
+      label: Interpretation and limitations
+      description: Explain what the result would mean and what it must not be used to conclude.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe other approaches or existing methods you considered.
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: Suggested tests
+      description: Describe simple or synthetic cases with predictable expected results.
+
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and architecture
+      description: Would this change the public API, add dependencies or affect existing results?
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Add relevant papers, standards or technical documentation. Links are welcome.
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other useful information, examples or mockups.

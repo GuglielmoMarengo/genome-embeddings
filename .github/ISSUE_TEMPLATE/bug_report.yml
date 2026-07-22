@@ -1,0 +1,112 @@
+name: Bug report
+description: Report reproducible incorrect or unexpected behavior
+title: "[Bug]: "
+labels:
+  - bug
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a problem.
+
+        Please do not include sensitive, proprietary, clinical or personally identifiable genomic data.
+
+        Security vulnerabilities must be reported privately according to SECURITY.md.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Preliminary checks
+      options:
+        - label: I searched the existing issues for similar reports.
+          required: true
+        - label: I am using the latest version from the main branch.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Problem summary
+      description: Clearly describe the incorrect or unexpected behavior.
+      placeholder: Describe what happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide the smallest sequence, code example or command that reproduces the problem.
+      placeholder: |
+        from src.genome import Genome
+
+        genome = Genome("ACGT")
+        ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What result did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What result did you receive instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Traceback or output
+      description: Paste the complete error message or relevant output.
+      render: shell
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      placeholder: "Python 3.13.6"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or version
+      description: Provide the commit hash, branch or release if known.
+      placeholder: "main, commit abc1234"
+
+  - type: textarea
+    id: input-characteristics
+    attributes:
+      label: Input characteristics
+      description: Describe the sequence length, k-mer length, file format or other relevant properties without sharing sensitive data.
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other information that may help reproduce or understand the issue.
