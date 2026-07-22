@@ -67,6 +67,15 @@ GENOME_LABELS = [
 DEFAULT_KMER_LENGTH = 3
 DEFAULT_KMER_LIMIT = 10
 
+DEFAULT_KMER_LENGTH = 3
+DEFAULT_KMER_LIMIT = 10
+
+KMER_SENSITIVITY_LENGTHS = [
+    1,
+    2,
+    3,
+    4,
+]
 
 def print_genome_summary(
     genome: Genome,
@@ -221,6 +230,38 @@ def print_genome_matrix(
             f"{formatted_values}"
         )
 
+def print_matrix_trajectory(
+    trajectory: dict[int, list[float]],
+    metric_name: str,
+    preview_limit: int = 3,
+) -> None:
+    print(
+        f"\n{metric_name} Matrix-Geometry Trajectory:"
+    )
+
+    for k, vector in trajectory.items():
+        preview = vector[:preview_limit]
+
+        print(
+            f"k={k}: "
+            f"dimensions={len(vector)}, "
+            f"first values={preview}"
+        )
+
+
+def print_pair_trajectory(
+    trajectory: dict[int, float],
+    row_label: str,
+    column_label: str,
+    metric_name: str,
+) -> None:
+    print(
+        f"\n{row_label} -> {column_label} "
+        f"{metric_name} Pair Trajectory:"
+    )
+
+    for k, value in trajectory.items():
+        print(f"k={k}: {value:.4f}")
 
 def load_genomes() -> list[Genome]:
     return [
@@ -298,6 +339,66 @@ def main() -> None:
 
     for label, value in cosine_ranking:
         print(f"{label}: {value:.4f}")
+
+    euclidean_trajectory = (
+        collection.euclidean_matrix_trajectory(
+            labels=GENOME_LABELS,
+            k_values=KMER_SENSITIVITY_LENGTHS,
+        )
+    )
+
+    cosine_trajectory = (
+        collection.cosine_matrix_trajectory(
+            labels=GENOME_LABELS,
+            k_values=KMER_SENSITIVITY_LENGTHS,
+        )
+    )
+
+    aequorea_acropora_euclidean_trajectory = (
+        collection.euclidean_pair_trajectory(
+            labels=GENOME_LABELS,
+            row_label="Aequorea GFP",
+            column_label="Acropora GFP",
+            k_values=KMER_SENSITIVITY_LENGTHS,
+        )
+    )
+
+    aequorea_acropora_cosine_trajectory = (
+        collection.cosine_pair_trajectory(
+            labels=GENOME_LABELS,
+            row_label="Aequorea GFP",
+            column_label="Acropora GFP",
+            k_values=KMER_SENSITIVITY_LENGTHS,
+        )
+    )
+
+    print_matrix_trajectory(
+        trajectory=euclidean_trajectory,
+        metric_name="Euclidean",
+    )
+
+    print_matrix_trajectory(
+        trajectory=cosine_trajectory,
+        metric_name="Cosine",
+    )
+
+    print_pair_trajectory(
+        trajectory=(
+            aequorea_acropora_euclidean_trajectory
+        ),
+        row_label="Aequorea GFP",
+        column_label="Acropora GFP",
+        metric_name="Euclidean",
+    )
+
+    print_pair_trajectory(
+        trajectory=(
+            aequorea_acropora_cosine_trajectory
+        ),
+        row_label="Aequorea GFP",
+        column_label="Acropora GFP",
+        metric_name="Cosine",
+    )
     
     euclidean_json = euclidean_matrix.to_json(
         indent=2,
@@ -339,6 +440,7 @@ def main() -> None:
     print(f"Metric: {matrix_dict['metric']}")
     print(f"k-mer length: {matrix_dict['kmer_length']}")
     print(f"Labels: {matrix_dict['labels']}")
+
 
 if __name__ == "__main__":
     main()

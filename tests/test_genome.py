@@ -1117,3 +1117,850 @@ def test_genome_matrix_to_csv_supports_custom_delimiter():
         ["Genome A", "1.0", "0.8"],
         ["Genome B", "0.8", "1.0"],
     ]
+
+def test_genome_collection_generates_multi_k_euclidean_matrices():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    matrices = collection.euclidean_distance_matrices(
+        labels=["Genome A", "Genome B"],
+        k_values=[1, 2, 3],
+    )
+
+    assert list(matrices) == [1, 2, 3]
+
+    assert all(
+        isinstance(matrix, GenomeMatrix)
+        for matrix in matrices.values()
+    )
+
+    assert matrices[1].kmer_length == 1
+    assert matrices[2].kmer_length == 2
+    assert matrices[3].kmer_length == 3
+
+    assert all(
+        matrix.metric == "euclidean"
+        for matrix in matrices.values()
+    )
+
+def test_multi_k_euclidean_matrices_match_single_k_results():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    matrices = collection.euclidean_distance_matrices(
+        labels=["Genome A", "Genome B"],
+        k_values=[1, 2, 3],
+    )
+
+    for k in [1, 2, 3]:
+        expected_matrix = (
+            collection.euclidean_distance_matrix(
+                labels=["Genome A", "Genome B"],
+                k=k,
+            )
+        )
+
+        assert matrices[k] == expected_matrix
+
+def test_multi_k_euclidean_matrices_preserve_requested_order():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    matrices = collection.euclidean_distance_matrices(
+        labels=["Genome A", "Genome B"],
+        k_values=[3, 1, 2],
+    )
+
+    assert list(matrices) == [3, 1, 2]
+
+def test_multi_k_euclidean_matrices_reject_empty_k_values():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="k-mer lengths cannot be empty",
+    ):
+        collection.euclidean_distance_matrices(
+            labels=["Genome A", "Genome B"],
+            k_values=[],
+        )
+
+def test_genome_collection_generates_multi_k_cosine_matrices():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    matrices = collection.cosine_similarity_matrices(
+        labels=["Genome A", "Genome B"],
+        k_values=[1, 2, 3],
+    )
+
+    assert list(matrices) == [1, 2, 3]
+
+    assert all(
+        isinstance(matrix, GenomeMatrix)
+        for matrix in matrices.values()
+    )
+
+    assert matrices[1].kmer_length == 1
+    assert matrices[2].kmer_length == 2
+    assert matrices[3].kmer_length == 3
+
+    assert all(
+        matrix.metric == "cosine"
+        for matrix in matrices.values()
+    )
+
+def test_multi_k_cosine_matrices_match_single_k_results():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    matrices = collection.cosine_similarity_matrices(
+        labels=["Genome A", "Genome B"],
+        k_values=[1, 2, 3],
+    )
+
+    for k in [1, 2, 3]:
+        expected_matrix = (
+            collection.cosine_similarity_matrix(
+                labels=["Genome A", "Genome B"],
+                k=k,
+            )
+        )
+
+        assert matrices[k] == expected_matrix
+
+def test_multi_k_cosine_matrices_preserve_requested_order():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    matrices = collection.cosine_similarity_matrices(
+        labels=["Genome A", "Genome B"],
+        k_values=[3, 1, 2],
+    )
+
+    assert list(matrices) == [3, 1, 2]
+
+def test_multi_k_cosine_matrices_reject_empty_k_values():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    with pytest.raises(
+
+        ValueError,
+        match="k-mer lengths cannot be empty",
+    ):
+        collection.cosine_similarity_matrices(
+            labels=["Genome A", "Genome B"],
+            k_values=[],
+        )
+
+def test_multi_k_euclidean_matrices_reject_duplicate_k_values():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="k-mer lengths must be unique",
+    ):
+        collection.euclidean_distance_matrices(
+            labels=["Genome A", "Genome B"],
+            k_values=[1, 2, 2, 3],
+        )
+
+def test_multi_k_cosine_matrices_reject_duplicate_k_values():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="k-mer lengths must be unique",
+    ):
+        collection.cosine_similarity_matrices(
+            labels=["Genome A", "Genome B"],
+            k_values=[1, 2, 2, 3],
+        )
+
+def test_genome_matrix_to_upper_triangle_vector():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        values=[
+            [0.0, 0.2, 0.4],
+            [0.2, 0.0, 0.3],
+            [0.4, 0.3, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    assert matrix.to_upper_triangle_vector() == [
+        0.2,
+        0.4,
+        0.3,
+    ]
+
+def test_upper_triangle_vector_excludes_diagonal():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+        ],
+        values=[
+            [1.0, 0.8],
+            [0.8, 1.0],
+        ],
+        metric="cosine",
+        kmer_length=3,
+    )
+
+    assert matrix.to_upper_triangle_vector() == [
+        0.8,
+    ]
+
+def test_upper_triangle_vector_returns_independent_list():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        values=[
+            [0.0, 0.2, 0.4],
+            [0.2, 0.0, 0.3],
+            [0.4, 0.3, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    vector = matrix.to_upper_triangle_vector()
+    vector[0] = 999.0
+
+    assert matrix.values[0][1] == 0.2
+
+def test_genome_matrix_upper_triangle_pairs():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        values=[
+            [0.0, 0.2, 0.4],
+            [0.2, 0.0, 0.3],
+            [0.4, 0.3, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    assert matrix.upper_triangle_pairs() == [
+        ("Genome A", "Genome B"),
+        ("Genome A", "Genome C"),
+        ("Genome B", "Genome C"),
+    ]
+
+def test_upper_triangle_pairs_match_vector_order():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        values=[
+            [0.0, 0.2, 0.4],
+            [0.2, 0.0, 0.3],
+            [0.4, 0.3, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    pairs = matrix.upper_triangle_pairs()
+    vector = matrix.to_upper_triangle_vector()
+
+    assert list(zip(pairs, vector, strict=True)) == [
+        (("Genome A", "Genome B"), 0.2),
+        (("Genome A", "Genome C"), 0.4),
+        (("Genome B", "Genome C"), 0.3),
+    ]
+
+def test_upper_triangle_pairs_returns_independent_list():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+        ],
+        values=[
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    pairs = matrix.upper_triangle_pairs()
+    pairs.append(("Modified", "Pair"))
+
+    assert matrix.upper_triangle_pairs() == [
+        ("Genome A", "Genome B"),
+    ]
+
+def test_genome_matrix_to_upper_triangle_rows():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        values=[
+            [0.0, 0.2, 0.4],
+            [0.2, 0.0, 0.3],
+            [0.4, 0.3, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    assert matrix.to_upper_triangle_rows() == [
+        {
+            "row_label": "Genome A",
+            "column_label": "Genome B",
+            "value": 0.2,
+        },
+        {
+            "row_label": "Genome A",
+            "column_label": "Genome C",
+            "value": 0.4,
+        },
+        {
+            "row_label": "Genome B",
+            "column_label": "Genome C",
+            "value": 0.3,
+        },
+    ]
+
+def test_upper_triangle_rows_match_pairs_and_vector_order():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        values=[
+            [0.0, 0.2, 0.4],
+            [0.2, 0.0, 0.3],
+            [0.4, 0.3, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    rows = matrix.to_upper_triangle_rows()
+    pairs = matrix.upper_triangle_pairs()
+    vector = matrix.to_upper_triangle_vector()
+
+    assert [
+        (
+            row["row_label"],
+            row["column_label"],
+            row["value"],
+        )
+        for row in rows
+    ] == [
+        (
+            row_label,
+            column_label,
+            value,
+        )
+        for (
+            row_label,
+            column_label,
+        ), value in zip(
+            pairs,
+            vector,
+            strict=True,
+        )
+    ]
+
+def test_upper_triangle_rows_returns_independent_dictionaries():
+    matrix = GenomeMatrix(
+        labels=[
+            "Genome A",
+            "Genome B",
+        ],
+        values=[
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    rows = matrix.to_upper_triangle_rows()
+    rows[0]["value"] = 999.0
+
+    assert matrix.values[0][1] == 0.5
+
+def test_genome_collection_generates_euclidean_matrix_trajectory():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+            Genome("GGGGTTTT"),
+        ]
+    )
+
+    trajectory = collection.euclidean_matrix_trajectory(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        k_values=[1, 2, 3],
+    )
+
+    assert list(trajectory) == [1, 2, 3]
+
+    assert all(
+        len(vector) == 3
+        for vector in trajectory.values()
+    )
+
+def test_euclidean_matrix_trajectory_matches_matrix_vectors():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+            Genome("GGGGTTTT"),
+        ]
+    )
+
+    labels = [
+        "Genome A",
+        "Genome B",
+        "Genome C",
+    ]
+
+    trajectory = collection.euclidean_matrix_trajectory(
+        labels=labels,
+        k_values=[1, 2, 3],
+    )
+
+    matrices = collection.euclidean_distance_matrices(
+        labels=labels,
+        k_values=[1, 2, 3],
+    )
+
+    assert trajectory == {
+        k: matrix.to_upper_triangle_vector()
+        for k, matrix in matrices.items()
+    }
+
+def test_euclidean_matrix_trajectory_preserves_k_order():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+            Genome("GGGGTTTT"),
+        ]
+    )
+
+    trajectory = collection.euclidean_matrix_trajectory(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        k_values=[3, 1, 2],
+    )
+
+    assert list(trajectory) == [3, 1, 2]
+
+def test_euclidean_matrix_trajectory_reuses_multi_k_validation():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="k-mer lengths must be unique",
+    ):
+        collection.euclidean_matrix_trajectory(
+            labels=["Genome A", "Genome B"],
+            k_values=[1, 2, 2],
+        )
+    
+def test_genome_collection_generates_cosine_matrix_trajectory():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+            Genome("GGGGTTTT"),
+        ]
+    )
+
+    trajectory = collection.cosine_matrix_trajectory(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        k_values=[1, 2, 3],
+    )
+
+    assert list(trajectory) == [1, 2, 3]
+
+    assert all(
+        len(vector) == 3
+        for vector in trajectory.values()
+    )
+
+def test_cosine_matrix_trajectory_matches_matrix_vectors():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+            Genome("GGGGTTTT"),
+        ]
+    )
+
+    labels = [
+        "Genome A",
+        "Genome B",
+        "Genome C",
+    ]
+
+    trajectory = collection.cosine_matrix_trajectory(
+        labels=labels,
+        k_values=[1, 2, 3],
+    )
+
+    matrices = collection.cosine_similarity_matrices(
+        labels=labels,
+        k_values=[1, 2, 3],
+    )
+
+    assert trajectory == {
+        k: matrix.to_upper_triangle_vector()
+        for k, matrix in matrices.items()
+    }
+
+def test_cosine_matrix_trajectory_preserves_k_order():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+            Genome("GGGGTTTT"),
+        ]
+    )
+
+    trajectory = collection.cosine_matrix_trajectory(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        k_values=[3, 1, 2],
+    )
+
+    assert list(trajectory) == [3, 1, 2]
+
+def test_cosine_matrix_trajectory_reuses_multi_k_validation():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="k-mer lengths must be unique",
+    ):
+        collection.cosine_matrix_trajectory(
+            labels=["Genome A", "Genome B"],
+            k_values=[1, 2, 2],
+        )
+
+def test_genome_collection_generates_euclidean_pair_trajectory():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+            Genome("GGGGTTTT"),
+        ]
+    )
+
+    trajectory = collection.euclidean_pair_trajectory(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        row_label="Genome A",
+        column_label="Genome B",
+        k_values=[1, 2, 3],
+    )
+
+    assert list(trajectory) == [1, 2, 3]
+
+    assert all(
+        isinstance(value, float)
+        for value in trajectory.values()
+    )
+
+def test_euclidean_pair_trajectory_matches_matrix_values():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+            Genome("GGGGTTTT"),
+        ]
+    )
+
+    labels = [
+        "Genome A",
+        "Genome B",
+        "Genome C",
+    ]
+
+    trajectory = collection.euclidean_pair_trajectory(
+        labels=labels,
+        row_label="Genome A",
+        column_label="Genome C",
+        k_values=[1, 2, 3],
+    )
+
+    matrices = collection.euclidean_distance_matrices(
+        labels=labels,
+        k_values=[1, 2, 3],
+    )
+
+    assert trajectory == {
+        k: matrix.get_value(
+            row_label="Genome A",
+            column_label="Genome C",
+        )
+        for k, matrix in matrices.items()
+    }
+
+def test_euclidean_pair_trajectory_preserves_k_order():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    trajectory = collection.euclidean_pair_trajectory(
+        labels=["Genome A", "Genome B"],
+        row_label="Genome A",
+        column_label="Genome B",
+        k_values=[3, 1, 2],
+    )
+
+    assert list(trajectory) == [3, 1, 2]
+
+def test_euclidean_pair_trajectory_rejects_unknown_label():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Unknown genome matrix label: Unknown",
+    ):
+        collection.euclidean_pair_trajectory(
+            labels=["Genome A", "Genome B"],
+            row_label="Genome A",
+            column_label="Unknown",
+            k_values=[1, 2, 3],
+        )
+
+def test_euclidean_pair_trajectory_reuses_multi_k_validation():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="k-mer lengths must be unique",
+    ):
+        collection.euclidean_pair_trajectory(
+            labels=["Genome A", "Genome B"],
+            row_label="Genome A",
+            column_label="Genome B",
+            k_values=[1, 2, 2],
+        )
+
+def test_genome_collection_generates_cosine_pair_trajectory():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+            Genome("GGGGTTTT"),
+        ]
+    )
+
+    trajectory = collection.cosine_pair_trajectory(
+        labels=[
+            "Genome A",
+            "Genome B",
+            "Genome C",
+        ],
+        row_label="Genome A",
+        column_label="Genome B",
+        k_values=[1, 2, 3],
+    )
+
+    assert list(trajectory) == [1, 2, 3]
+
+    assert all(
+        isinstance(value, float)
+        for value in trajectory.values()
+    )
+
+def test_cosine_pair_trajectory_matches_matrix_values():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+            Genome("GGGGTTTT"),
+        ]
+    )
+
+    labels = [
+        "Genome A",
+        "Genome B",
+        "Genome C",
+    ]
+
+    trajectory = collection.cosine_pair_trajectory(
+        labels=labels,
+        row_label="Genome A",
+        column_label="Genome C",
+        k_values=[1, 2, 3],
+    )
+
+    matrices = collection.cosine_similarity_matrices(
+        labels=labels,
+        k_values=[1, 2, 3],
+    )
+
+    assert trajectory == {
+        k: matrix.get_value(
+            row_label="Genome A",
+            column_label="Genome C",
+        )
+        for k, matrix in matrices.items()
+    }
+
+def test_cosine_pair_trajectory_preserves_k_order():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    trajectory = collection.cosine_pair_trajectory(
+        labels=["Genome A", "Genome B"],
+        row_label="Genome A",
+        column_label="Genome B",
+        k_values=[3, 1, 2],
+    )
+
+    assert list(trajectory) == [3, 1, 2]
+
+
+def test_cosine_pair_trajectory_rejects_unknown_label():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Unknown genome matrix label: Unknown",
+    ):
+        collection.cosine_pair_trajectory(
+            labels=["Genome A", "Genome B"],
+            row_label="Genome A",
+            column_label="Unknown",
+            k_values=[1, 2, 3],
+        )
+
+def test_cosine_pair_trajectory_reuses_multi_k_validation():
+    collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="k-mer lengths must be unique",
+    ):
+        collection.cosine_pair_trajectory(
+            labels=["Genome A", "Genome B"],
+            row_label="Genome A",
+            column_label="Genome B",
+            k_values=[1, 2, 2],
+        )

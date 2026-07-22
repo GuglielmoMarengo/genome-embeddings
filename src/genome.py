@@ -336,6 +336,49 @@ class GenomeMatrix:
 
         return output.getvalue()
     
+    def to_upper_triangle_vector(
+        self,
+    ) -> list[float]:
+        return [
+            self.values[row_index][column_index]
+            for row_index in range(len(self.values))
+            for column_index in range(
+                row_index + 1,
+                len(self.values),
+            )
+        ]
+    
+    def upper_triangle_pairs(
+        self,
+    ) -> list[tuple[str, str]]:
+        return [
+            (
+                self.labels[row_index],
+                self.labels[column_index],
+            )
+            for row_index in range(len(self.labels))
+            for column_index in range(
+                row_index + 1,
+                len(self.labels),
+            )
+        ]
+    
+    def to_upper_triangle_rows(
+        self,
+    ) -> list[dict[str, str | float]]:
+        return [
+            {
+                "row_label": self.labels[row_index],
+                "column_label": self.labels[column_index],
+                "value": self.values[row_index][column_index],
+            }
+            for row_index in range(len(self.labels))
+            for column_index in range(
+                row_index + 1,
+                len(self.labels),
+            )
+        ]
+    
     def rank_by_label(
         self,
         label: str,
@@ -406,6 +449,67 @@ class GenomeCollection:
             genome.descriptor(k=k)
             for genome in self.genomes
         ]
+    
+    def _build_matrices(
+        self,
+        labels: list[str],
+        k_values: list[int],
+        matrix_builder,
+    ) -> dict[int, GenomeMatrix]:
+        if not k_values:
+            raise ValueError(
+                "k-mer lengths cannot be empty."
+            )
+
+        if len(k_values) != len(set(k_values)):
+            raise ValueError(
+                "k-mer lengths must be unique."
+            )
+
+        return {
+            k: matrix_builder(
+                labels=labels,
+                k=k,
+            )
+            for k in k_values
+        }
+    
+    def _build_matrix_trajectory(
+        self,
+        labels: list[str],
+        k_values: list[int],
+        matrices_builder,
+    ) -> dict[int, list[float]]:
+        matrices = matrices_builder(
+            labels=labels,
+            k_values=k_values,
+        )
+
+        return {
+            k: matrix.to_upper_triangle_vector()
+            for k, matrix in matrices.items()
+        }
+    
+    def _build_pair_trajectory(
+        self,
+        labels: list[str],
+        row_label: str,
+        column_label: str,
+        k_values: list[int],
+        matrices_builder,
+    ) -> dict[int, float]:
+        matrices = matrices_builder(
+            labels=labels,
+            k_values=k_values,
+        )
+
+        return {
+            k: matrix.get_value(
+                row_label=row_label,
+                column_label=column_label,
+            )
+            for k, matrix in matrices.items()
+        }
 
     def euclidean_distance_matrix(
         self,
@@ -425,6 +529,43 @@ class GenomeCollection:
             metric="euclidean",
             kmer_length=k,
         )
+    
+    def euclidean_distance_matrices(
+        self,
+        labels: list[str],
+        k_values: list[int],
+    ) -> dict[int, GenomeMatrix]:
+        return self._build_matrices(
+            labels=labels,
+            k_values=k_values,
+            matrix_builder=self.euclidean_distance_matrix,
+        )
+
+    def euclidean_matrix_trajectory(
+        self,
+        labels: list[str],
+        k_values: list[int],
+    ) -> dict[int, list[float]]:
+        return self._build_matrix_trajectory(
+            labels=labels,
+            k_values=k_values,
+            matrices_builder=self.euclidean_distance_matrices,
+        )
+    
+    def euclidean_pair_trajectory(
+        self,
+        labels: list[str],
+        row_label: str,
+        column_label: str,
+        k_values: list[int],
+    ) -> dict[int, float]:
+        return self._build_pair_trajectory(
+            labels=labels,
+            row_label=row_label,
+            column_label=column_label,
+            k_values=k_values,
+            matrices_builder=self.euclidean_distance_matrices,
+        )
 
     def cosine_similarity_matrix(
         self,
@@ -443,6 +584,43 @@ class GenomeCollection:
             values=values,
             metric="cosine",
             kmer_length=k,
+        )
+    
+    def cosine_similarity_matrices(
+        self,
+        labels: list[str],
+        k_values: list[int],
+    ) -> dict[int, GenomeMatrix]:
+        return self._build_matrices(
+            labels=labels,
+            k_values=k_values,
+            matrix_builder=self.cosine_similarity_matrix,
+        )
+
+    def cosine_matrix_trajectory(
+        self,
+        labels: list[str],
+        k_values: list[int],
+    ) -> dict[int, list[float]]:
+        return self._build_matrix_trajectory(
+            labels=labels,
+            k_values=k_values,
+            matrices_builder=self.cosine_similarity_matrices,
+        )
+    
+    def cosine_pair_trajectory(
+        self,
+        labels: list[str],
+        row_label: str,
+        column_label: str,
+        k_values: list[int],
+    ) -> dict[int, float]:
+        return self._build_pair_trajectory(
+            labels=labels,
+            row_label=row_label,
+            column_label=column_label,
+            k_values=k_values,
+            matrices_builder=self.cosine_similarity_matrices,
         )
 
     @staticmethod

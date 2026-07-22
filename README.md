@@ -9,15 +9,17 @@
 
 Genome Embeddings is an open-source Python project for representing genomic sequences through interpretable mathematical descriptors.
 
-Instead of relying exclusively on neural networks, the project explores transparent and reproducible representations inspired by information theory, statistics, graph theory and number theory.
+Rather than relying exclusively on neural networks, the project explores transparent and reproducible representations inspired by information theory, statistics, graph theory and number theory.
 
-> The project is currently intended for research and software-development purposes. Any future clinical or diagnostic application would require extensive biological, statistical, clinical and regulatory validation.
+The current implementation supports sequence descriptors, pairwise comparison, multi-genome matrices, matrix serialization and exploratory multiscale analysis across multiple k-mer lengths.
+
+> This project is currently intended for research and software-development purposes. Any future clinical or diagnostic use would require extensive biological, statistical, clinical and regulatory validation.
 
 ---
 
 ## Project Goals
 
-Genome Embeddings aims to build reusable representations of genomic and transcriptomic sequences that can be:
+Genome Embeddings aims to develop reusable representations of genomic and transcriptomic sequences that can be:
 
 * measured;
 * interpreted;
@@ -28,13 +30,11 @@ Genome Embeddings aims to build reusable representations of genomic and transcri
 * analyzed across multiple sequence scales;
 * integrated with statistical and machine-learning workflows.
 
-The current implementation focuses on explainable DNA descriptors, pairwise comparison, multi-genome comparison matrices, similarity ranking and structured matrix export.
-
-A major future direction is **multiscale representation**, combining information calculated across multiple k-mer lengths rather than relying on a single value of `k`.
+The long-term objective is to investigate whether interpretable mathematical descriptors can produce robust and biologically meaningful genomic embeddings without sacrificing transparency.
 
 ---
 
-## Implemented Features
+## Current Capabilities
 
 ### Sequence analysis
 
@@ -52,7 +52,7 @@ A major future direction is **multiscale representation**, combining information
 ### k-mer analysis
 
 * Configurable k-mer length
-* k-mer extraction
+* Sliding-window k-mer extraction
 * k-mer frequencies
 * Normalized k-mer diversity
 * k-mer entropy
@@ -65,7 +65,7 @@ A major future direction is **multiscale representation**, combining information
 * `GenomeCollection`
 * `GenomeMatrix`
 
-### Comparison and export tools
+### Comparison tools
 
 * Raw descriptor vectors
 * Normalized descriptor vectors
@@ -76,14 +76,29 @@ A major future direction is **multiscale representation**, combining information
 * Euclidean distance matrices
 * Cosine similarity matrices
 * Label-based matrix lookup
+* Distance and similarity ranking
+
+### Matrix conversion and export
+
 * Row-oriented matrix conversion
-* Dictionary matrix conversion
-* Label-based similarity and distance ranking
-* JSON matrix serialization
+* Dictionary conversion
+* JSON serialization
 * Configurable JSON indentation
-* CSV matrix serialization
+* CSV serialization
 * Configurable CSV delimiter
-* Biological negative controls
+* Upper-triangle vectorization
+* Upper-triangle label pairs
+* Structured upper-triangle rows
+
+### Multiscale analysis
+
+* Multi-`k` Euclidean matrices
+* Multi-`k` cosine matrices
+* Ordered matrix collections
+* Duplicate `k` validation
+* Matrix-geometry trajectories
+* Pair-specific trajectories
+* Euclidean and cosine sensitivity analysis across `k`
 
 ---
 
@@ -108,7 +123,7 @@ Run the demonstration:
 python main.py
 ```
 
-Run the tests:
+Run the test suite:
 
 ```bash
 python -m pytest
@@ -120,7 +135,7 @@ For detailed output:
 python -m pytest -v
 ```
 
-The current test suite contains **79 tests**.
+The current test suite contains **116 tests**.
 
 ---
 
@@ -145,7 +160,7 @@ genome = Genome.from_fasta(
 )
 ```
 
-### Calculate individual descriptors
+### Calculate descriptors
 
 ```python
 genome.length()
@@ -176,7 +191,7 @@ descriptor.to_normalized_vector()
 
 `GenomeDescriptor` stores the mathematical properties calculated from a sequence.
 
-The current fields are:
+Current fields:
 
 ```text
 length
@@ -202,7 +217,7 @@ k-mer diversity
 normalized k-mer entropy
 ```
 
-Sequence length, AT content, pyrimidine content and k-mer length are excluded because they are scale-dependent, redundant or configuration-related.
+Sequence length, AT content, pyrimidine content and k-mer length are excluded from the normalized comparison vector because they are scale-dependent, redundant or configuration-related.
 
 ---
 
@@ -232,7 +247,11 @@ GC content + AT content = 1
 H = -Σ p(x) log₂ p(x)
 ```
 
-The maximum nucleotide entropy for DNA is `2 bits`.
+The maximum nucleotide entropy for DNA is:
+
+```text
+2 bits
+```
 
 Normalization:
 
@@ -310,7 +329,7 @@ similarity = first_descriptor.cosine_similarity(
 )
 ```
 
-A complete structured comparison can be generated with:
+A structured comparison can be generated with:
 
 ```python
 comparison = first_descriptor.compare(
@@ -326,7 +345,7 @@ cosine_similarity
 feature_differences
 ```
 
-Feature differences can be sorted from largest to smallest:
+Feature differences can be ranked from largest to smallest:
 
 ```python
 for feature_name, difference in (
@@ -387,7 +406,7 @@ Both methods return a structured `GenomeMatrix`.
 
 ## GenomeMatrix
 
-`GenomeMatrix` stores matrix values together with their context:
+`GenomeMatrix` stores matrix values together with their analytical context:
 
 ```text
 labels
@@ -420,6 +439,26 @@ distance = matrix.get_value(
 ```
 
 Unknown labels raise a `ValueError`.
+
+### Ranking
+
+A matrix can rank every other genome relative to a selected reference:
+
+```python
+ranking = matrix.rank_by_label(
+    label="Genome A",
+)
+```
+
+For Euclidean matrices, smaller values are ranked first.
+
+For cosine matrices, larger values are ranked first.
+
+The reference genome is excluded from its own ranking.
+
+---
+
+## Matrix Conversion
 
 ### Row-oriented conversion
 
@@ -464,40 +503,17 @@ Example:
 
 Conversion methods return copies of the underlying lists, preventing accidental modification of the original matrix.
 
-### Similarity and distance ranking
+---
 
-A matrix can rank every other genome relative to a selected reference:
+## Matrix Serialization
 
-```python
-ranking = matrix.rank_by_label(
-    label="Genome A",
-)
-```
-
-For Euclidean matrices, smaller values are ranked first.
-
-For cosine matrices, larger values are ranked first.
-
-The reference genome is excluded from its own ranking.
-
-Example Euclidean ranking:
-
-```python
-[
-    ("Genome C", 0.10),
-    ("Genome B", 0.20),
-]
-```
-
-### JSON export
-
-A matrix can be serialized into JSON:
+### JSON
 
 ```python
 json_output = matrix.to_json()
 ```
 
-Formatted output can be generated with an indentation level:
+Formatted JSON can be generated with:
 
 ```python
 json_output = matrix.to_json(
@@ -528,11 +544,9 @@ Example:
 }
 ```
 
-The JSON representation is generated from `to_dict()`, ensuring that both formats share the same structure.
+The JSON representation is generated from `to_dict()`, ensuring structural consistency.
 
-### CSV export
-
-A matrix can be serialized into CSV:
+### CSV
 
 ```python
 csv_output = matrix.to_csv()
@@ -546,7 +560,7 @@ Genome A,0.0,0.12
 Genome B,0.12,0.0
 ```
 
-A custom delimiter can also be selected:
+A custom delimiter can be selected:
 
 ```python
 csv_output = matrix.to_csv(
@@ -556,13 +570,91 @@ csv_output = matrix.to_csv(
 
 The CSV output uses a consistent newline terminator across operating systems.
 
-The current methods return serialized strings. Writing those strings directly to files will be introduced through future file-export utilities or a command-line interface.
+The current serialization methods return strings. Direct file-writing utilities are planned separately.
+
+---
+
+## Upper-Triangle Representation
+
+Distance and similarity matrices are symmetric. Their diagonal and lower triangle therefore contain redundant information.
+
+For a matrix with `n` genomes, the number of unique pairwise comparisons is:
+
+```text
+n × (n - 1) / 2
+```
+
+For six genomes:
+
+```text
+6 × 5 / 2 = 15
+```
+
+### Vector representation
+
+```python
+vector = matrix.to_upper_triangle_vector()
+```
+
+Example:
+
+```python
+[0.2, 0.4, 0.3]
+```
+
+### Associated label pairs
+
+```python
+pairs = matrix.upper_triangle_pairs()
+```
+
+Example:
+
+```python
+[
+    ("Genome A", "Genome B"),
+    ("Genome A", "Genome C"),
+    ("Genome B", "Genome C"),
+]
+```
+
+The order of the pairs matches the order of the vector coordinates.
+
+### Structured rows
+
+```python
+rows = matrix.to_upper_triangle_rows()
+```
+
+Example:
+
+```python
+[
+    {
+        "row_label": "Genome A",
+        "column_label": "Genome B",
+        "value": 0.2,
+    },
+    {
+        "row_label": "Genome A",
+        "column_label": "Genome C",
+        "value": 0.4,
+    },
+    {
+        "row_label": "Genome B",
+        "column_label": "Genome C",
+        "value": 0.3,
+    },
+]
+```
+
+This representation preserves both numerical values and their biological labels.
 
 ---
 
 ## Configurable k-mer Resolution
 
-The demonstration program currently uses:
+The demonstration program uses:
 
 ```python
 DEFAULT_KMER_LENGTH = 3
@@ -594,11 +686,134 @@ Higher values of `k` increase sparsity, computational cost and sensitivity to se
 
 ---
 
+## Multi-k Matrix Analysis
+
+A `GenomeCollection` can generate one matrix for every requested k-mer length.
+
+### Euclidean matrices
+
+```python
+matrices = collection.euclidean_distance_matrices(
+    labels=labels,
+    k_values=[1, 2, 3, 4],
+)
+```
+
+### Cosine matrices
+
+```python
+matrices = collection.cosine_similarity_matrices(
+    labels=labels,
+    k_values=[1, 2, 3, 4],
+)
+```
+
+The result is an ordered dictionary-like mapping:
+
+```python
+{
+    1: GenomeMatrix(...),
+    2: GenomeMatrix(...),
+    3: GenomeMatrix(...),
+    4: GenomeMatrix(...),
+}
+```
+
+The requested order of `k_values` is preserved.
+
+The collection rejects:
+
+* empty `k_values`;
+* duplicate k-mer lengths;
+* invalid individual values of `k`.
+
+---
+
+## Matrix-Geometry Trajectories
+
+Each symmetric comparison matrix can be converted into the vector of its unique pairwise values.
+
+Repeating this process for several values of `k` produces a trajectory in matrix space:
+
+```python
+trajectory = collection.euclidean_matrix_trajectory(
+    labels=labels,
+    k_values=[1, 2, 3, 4],
+)
+```
+
+Example structure:
+
+```python
+{
+    1: [0.10, 0.20, 0.30],
+    2: [0.12, 0.25, 0.28],
+    3: [0.15, 0.27, 0.24],
+    4: [0.18, 0.31, 0.22],
+}
+```
+
+Cosine trajectories are generated with:
+
+```python
+trajectory = collection.cosine_matrix_trajectory(
+    labels=labels,
+    k_values=[1, 2, 3, 4],
+)
+```
+
+Each vector represents the global geometry of the dataset at one k-mer scale.
+
+The sequence of vectors describes how that geometry changes as `k` increases.
+
+---
+
+## Pair Trajectories
+
+A specific genome pair can also be followed across multiple values of `k`.
+
+### Euclidean pair trajectory
+
+```python
+trajectory = collection.euclidean_pair_trajectory(
+    labels=labels,
+    row_label="Genome A",
+    column_label="Genome B",
+    k_values=[1, 2, 3, 4],
+)
+```
+
+### Cosine pair trajectory
+
+```python
+trajectory = collection.cosine_pair_trajectory(
+    labels=labels,
+    row_label="Genome A",
+    column_label="Genome B",
+    k_values=[1, 2, 3, 4],
+)
+```
+
+Example:
+
+```python
+{
+    1: 0.0635,
+    2: 0.0641,
+    3: 0.0656,
+    4: 0.0862,
+}
+```
+
+Pair trajectories make it possible to investigate whether the relationship between two sequences is stable or scale-dependent.
+
+---
+
 ## Example Dataset
 
 The repository contains fluorescent-protein sequences, two biological negative controls and one synthetic control.
 
-| File                                      | Organism                   |          Region |             Length |
+| File                                      | Organism                   |          Region |     Length or role |
 | ----------------------------------------- | -------------------------- | --------------: | -----------------: |
 | `aequorea_victoria_gfp_cds.fasta`         | *Aequorea victoria*        |             CDS |             717 nt |
 | `aequorea_victoria_gfp_mrna.fasta`        | *Aequorea victoria*        |   Complete mRNA |             922 nt |
@@ -616,7 +831,7 @@ CDS versus CDS
 
 The complete *Aequorea victoria* mRNA is retained for future experiments but is not used in the primary CDS comparison.
 
-The biological controls help evaluate whether the descriptor space separates sequence function, taxonomy, composition or other broad genomic properties.
+The biological controls help evaluate whether the descriptor space separates function, taxonomy, composition or other broad sequence properties.
 
 The synthetic periodic sequence is a methodological control and is not treated as a biological reference.
 
@@ -633,9 +848,9 @@ The demonstration compares:
 * *Saccharomyces cerevisiae* `TPI1` CDS
 * a synthetic periodic sequence
 
-### Pairwise comparison
+### Pairwise comparison at `k = 3`
 
-For the two GFP coding sequences at `k = 3`:
+For the two GFP coding sequences:
 
 ```text
 Euclidean distance: 0.0656
@@ -653,7 +868,7 @@ purine_content: 0.0052
 normalized_gc_skew: 0.0047
 ```
 
-### Euclidean distance matrix
+### Euclidean distance matrix at `k = 3`
 
 ```text
                             Aequorea GFP   Acropora GFP   Discosoma FP583   S. aureus catA   S. cerevisiae TPI1   Periodic control
@@ -665,7 +880,7 @@ S. cerevisiae TPI1                0.0842         0.0497            0.0710       
 Periodic control                  1.1187         1.1358            1.1393            1.0612               1.1286             0.0000
 ```
 
-### Cosine similarity matrix
+### Cosine similarity matrix at `k = 3`
 
 ```text
                             Aequorea GFP   Acropora GFP   Discosoma FP583   S. aureus catA   S. cerevisiae TPI1   Periodic control
@@ -699,42 +914,117 @@ S. aureus catA: 0.9954
 Periodic control: 0.8071
 ```
 
-### Interpretation
+### Multiscale matrix trajectory
 
-Within the current six-dimensional descriptor space:
+With six sequences, each matrix trajectory vector contains:
 
-* the synthetic periodic control remains strongly separated;
-* the bacterial `catA` CDS is separated from the compact eukaryotic group;
-* the eukaryotic `TPI1` control is close to the fluorescent-protein CDS sequences;
-* Euclidean distance provides stronger numerical separation than cosine similarity;
-* cosine similarity is highly compressed among biological sequences.
+```text
+15 dimensions
+```
 
-The proximity of `TPI1` to the fluorescent-protein CDS sequences shows that the current representation does not yet distinguish protein function.
+because:
 
-It likely captures broad compositional, taxonomic or coding-sequence properties.
+```text
+6 × 5 / 2 = 15
+```
 
-These observations are preliminary and do not represent biological validation.
+The first Euclidean coordinates across `k = 1, 2, 3, 4` are:
+
+```text
+k=1: [0.0635, 0.1088, 0.2011, ...]
+k=2: [0.0641, 0.1097, 0.1988, ...]
+k=3: [0.0656, 0.1102, 0.2074, ...]
+k=4: [0.0862, 0.1216, 0.2719, ...]
+```
+
+The first cosine coordinates are:
+
+```text
+k=1: [0.9996, 0.9989, 0.9951, ...]
+k=2: [0.9996, 0.9989, 0.9952, ...]
+k=3: [0.9996, 0.9990, 0.9954, ...]
+k=4: [0.9994, 0.9989, 0.9918, ...]
+```
+
+### *Aequorea*–*Acropora* pair trajectory
+
+Euclidean:
+
+```text
+k=1: 0.0635
+k=2: 0.0641
+k=3: 0.0656
+k=4: 0.0862
+```
+
+Cosine:
+
+```text
+k=1: 0.9996
+k=2: 0.9996
+k=3: 0.9996
+k=4: 0.9994
+```
 
 ---
 
-## Demonstration Output
+## Interpretation
+
+Within the current descriptor space:
+
+* the synthetic periodic control remains strongly separated;
+* the bacterial `catA` CDS is separated from the compact eukaryotic group;
+* the eukaryotic `TPI1` control remains close to the fluorescent-protein CDS sequences;
+* Euclidean distance provides stronger numerical separation than cosine similarity;
+* cosine similarity remains highly compressed among biological sequences;
+* the *Aequorea*–*Acropora* Euclidean relationship is stable for `k = 1, 2, 3` and changes more visibly at `k = 4`.
+
+The proximity of `TPI1` to the fluorescent-protein sequences shows that the current representation does not distinguish protein function.
+
+The descriptors likely capture broad compositional, taxonomic or coding-sequence properties.
+
+The scale-dependent variation observed at `k = 4` is an exploratory multiscale observation, not evidence of a specific biological mechanism.
+
+These results are preliminary and do not represent biological validation.
+
+---
+
+## Demonstration Program
 
 `main.py` currently demonstrates:
 
 * FASTA loading;
 * genome summary generation;
 * descriptor calculation;
-* raw and normalized vector conversion;
+* raw and normalized descriptor vectors;
 * k-mer frequency calculation;
 * pairwise genome comparison;
 * Euclidean and cosine matrices;
 * ranking relative to a reference genome;
-* label-based matrix lookup;
-* row and dictionary conversion;
+* multi-`k` matrix generation;
+* matrix-geometry trajectories;
+* pair-specific trajectories;
 * JSON export preview;
-* CSV export preview.
+* CSV export preview;
+* label-based lookup;
+* matrix metadata and row conversion.
 
-The previews keep the demonstration readable while verifying the serialization formats.
+The single-scale demonstration uses:
+
+```python
+DEFAULT_KMER_LENGTH = 3
+```
+
+The multiscale demonstration uses:
+
+```python
+KMER_SENSITIVITY_LENGTHS = [
+    1,
+    2,
+    3,
+    4,
+]
+```
 
 ---
 
@@ -746,7 +1036,8 @@ FASTA sequence
       ▼
     Genome
       │
-      ├── descriptor methods
+      ├── sequence descriptors
+      ├── k-mer descriptors
       └── descriptor(k)
               │
               ▼
@@ -769,18 +1060,35 @@ Multiple Genome objects
 GenomeCollection
       │
       ├── descriptors(k)
+      │
       ├── euclidean_distance_matrix()
-      └── cosine_similarity_matrix()
+      │
+      ├── cosine_similarity_matrix()
+      │
+      ├── euclidean_distance_matrices()
+      │
+      ├── cosine_similarity_matrices()
+      │
+      ├── euclidean_matrix_trajectory()
+      │
+      ├── cosine_matrix_trajectory()
+      │
+      ├── euclidean_pair_trajectory()
+      │
+      └── cosine_pair_trajectory()
                        │
                        ▼
                  GenomeMatrix
                        │
                        ├── get_value()
+                       ├── rank_by_label()
                        ├── to_rows()
                        ├── to_dict()
-                       ├── rank_by_label()
                        ├── to_json()
-                       └── to_csv()
+                       ├── to_csv()
+                       ├── to_upper_triangle_vector()
+                       ├── upper_triangle_pairs()
+                       └── to_upper_triangle_rows()
 ```
 
 ---
@@ -832,7 +1140,9 @@ The current implementation validates:
 * matrix dimensions;
 * matrix label counts;
 * supported matrix metrics;
-* unknown lookup and ranking labels.
+* unknown matrix labels;
+* empty multi-`k` requests;
+* duplicate k-mer lengths.
 
 RNA and ambiguous nucleotide support are planned.
 
@@ -840,7 +1150,7 @@ RNA and ambiguous nucleotide support are planned.
 
 ## Roadmap
 
-### Near term
+### Core representation
 
 * [x] Core genome representation
 * [x] Mathematical descriptors
@@ -849,31 +1159,47 @@ RNA and ambiguous nucleotide support are planned.
 * [x] Structured comparison results
 * [x] Multi-genome collections
 * [x] Distance and similarity matrices
+* [x] Biological negative controls
+
+### Matrix utilities
+
 * [x] Label-based matrix lookup
+* [x] Similarity and distance ranking
 * [x] Matrix row conversion
 * [x] Matrix dictionary conversion
-* [x] Biological negative controls
-* [x] Similarity ranking
-* [x] Matrix export
 * [x] JSON serialization
 * [x] CSV serialization
+* [x] Upper-triangle vectorization
+* [x] Upper-triangle label mapping
+* [x] Structured pairwise rows
 * [ ] Direct file-writing utilities
-* [ ] Heatmap visualization
-* [ ] Clustering
 
-### Multiscale representation
+### Multiscale analysis
 
-* [ ] k-mer sensitivity analysis
-* [ ] Multi-k descriptor comparison
-* [ ] Multi-k matrix comparison
-* [ ] Cross-scale stability analysis
-* [ ] Matrix-geometry trajectories
+* [x] Multi-`k` Euclidean matrices
+* [x] Multi-`k` cosine matrices
+* [x] Initial k-mer sensitivity analysis
+* [x] Matrix-geometry trajectories
+* [x] Pair-specific trajectories
+* [ ] Cross-scale trajectory distances
+* [ ] Cross-scale stability metrics
+* [ ] Ranking stability analysis
+* [ ] Clustering stability analysis
+* [ ] Sequence-length sensitivity analysis
+* [ ] Sparse high-`k` representation
 * [ ] Multiscale mutation signatures
 * [ ] Multiscale genome embeddings
 * [ ] Scale weighting
 * [ ] Cross-scale normalization
-* [ ] Sequence-length sensitivity analysis
-* [ ] Sparse high-k representation
+
+### Visualization and analysis
+
+* [ ] Heatmap visualization
+* [ ] Trajectory plots
+* [ ] Pair-trajectory plots
+* [ ] Clustering
+* [ ] Dimensionality reduction
+* [ ] Statistical significance analysis
 
 ### Future descriptors
 
@@ -891,7 +1217,7 @@ RNA and ambiguous nucleotide support are planned.
 * [ ] Fractal descriptors
 * [ ] Number-theoretic descriptors
 
-### Future platform development
+### Platform development
 
 * [ ] Multiple FASTA records
 * [ ] Ambiguous nucleotide support
@@ -901,8 +1227,8 @@ RNA and ambiguous nucleotide support are planned.
 * [ ] Descriptor export
 * [ ] Comparison export
 * [x] Matrix serialization
+* [ ] Trajectory export
 * [ ] Embedding export
-* [ ] Visualization tools
 * [ ] Parallel processing
 * [ ] Biological benchmark datasets
 * [ ] Statistical validation
@@ -911,40 +1237,46 @@ RNA and ambiguous nucleotide support are planned.
 
 ---
 
-## Multiscale Vision
+## Multiscale Research Direction
 
-The current implementation calculates one descriptor space for one selected k-mer length.
+The current implementation distinguishes between single-scale and multiscale analysis.
 
-Future work will distinguish between:
+### Single-scale representation
+
+A descriptor or comparison matrix is calculated for one selected value of `k`.
+
+This provides a snapshot of sequence relationships at one resolution.
 
 ### k-mer sensitivity analysis
 
-Each value of `k` will be evaluated independently to study:
+Several values of `k` are evaluated independently to study:
 
 * descriptor stability;
 * distance stability;
-* similarity rankings;
-* clustering stability;
+* similarity stability;
+* ranking changes;
+* clustering changes;
 * sparsity;
 * dependence on sequence length.
 
 ### Matrix-geometry trajectories
 
-Each comparison matrix can be transformed into a vector containing its unique pairwise values.
+Each comparison matrix is transformed into the vector of its unique pairwise values.
 
-Repeating the process across multiple values of `k` will produce a trajectory describing how the global geometry of the dataset changes with sequence resolution.
+As `k` changes, these vectors form a trajectory in a fixed-dimensional matrix space.
 
-This may support the identification of:
+This representation may support the identification of:
 
 * stable sequence relationships;
 * scale-dependent relationships;
 * abrupt geometric changes;
 * sequence pairs driving matrix deformation;
-* multiscale mutation signatures.
+* differences between distance metrics;
+* exploratory multiscale mutation signatures.
 
-### Multiscale embeddings
+### Future multiscale embeddings
 
-Features derived from multiple values of `k` will eventually be combined into one representation:
+Future work may combine features from several k-mer scales into one representation:
 
 ```text
 global descriptors
@@ -960,9 +1292,17 @@ higher-order features
 multiscale genome embedding
 ```
 
-The challenge will be to combine scales without sacrificing interpretability.
+The main challenge will be to combine scales without sacrificing interpretability.
 
-Key research topics will include normalization, weighting, redundancy, sparsity and biological validation.
+Important research topics include:
+
+* normalization;
+* scale weighting;
+* redundancy;
+* sparsity;
+* sequence-length dependence;
+* statistical validation;
+* biological validation.
 
 ---
 
@@ -970,9 +1310,25 @@ Key research topics will include normalization, weighting, redundancy, sparsity 
 
 > Can interpretable mathematical descriptors produce biologically meaningful, robust and reusable embeddings of genomic and transcriptomic data?
 
-> Can information across multiple sequence resolutions be combined into more informative embeddings without sacrificing interpretability?
+> Can information across multiple sequence resolutions be combined into more informative representations without sacrificing interpretability?
+
+> Can matrix-geometry trajectories reveal stable, scale-dependent or anomalous sequence relationships?
 
 > Can multiscale comparison geometries support an exploratory method for detecting and characterizing mutation signatures?
+
+---
+
+## Current Limitations
+
+* Only DNA sequences containing `A`, `C`, `G` and `T` are supported.
+* FASTA parsing currently supports a single record.
+* The descriptor vector contains a limited number of aggregated features.
+* Sliding-window triplets are not equivalent to reading-frame-aware codons.
+* The example dataset is too small for biological validation.
+* Cosine similarity is highly compressed in the current descriptor space.
+* No statistical significance testing is currently implemented.
+* No phylogenetic, structural or functional inference should be made from the current results.
+* Multiscale trajectories are currently exploratory representations, not validated biological signatures.
 
 ---
 
