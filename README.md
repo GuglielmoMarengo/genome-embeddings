@@ -25,7 +25,7 @@ The current implementation supports:
 * cross-scale trajectory-change analysis;
 * pair contributions to matrix deformation;
 * graphical analysis through heatmaps, distributions and trajectory plots;
-* structured security, contribution and issue-reporting workflows.
+* structured security, contribution, issue-reporting and pull-request workflows.
 
 > This project is currently intended for research and software-development purposes. Any future clinical or diagnostic use would require extensive biological, statistical, clinical and regulatory validation.
 
@@ -152,6 +152,7 @@ The project follows these principles:
 * Code of conduct
 * Structured bug-report form
 * Structured feature-request form
+* Standardized pull-request template
 * Public-issue restrictions for security vulnerabilities
 
 ---
@@ -1484,10 +1485,11 @@ GenomeCollection
 ```text
 genome-embeddings/
 ├── .github/
-│   └── ISSUE_TEMPLATE/
-│       ├── bug_report.yml
-│       ├── feature_request.yml
-│       └── config.yml
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.yml
+│   │   ├── feature_request.yml
+│   │   └── config.yml
+│   └── pull_request_template.md
 ├── data/
 │   ├── fluorescent_proteins/
 │   │   ├── aequorea_victoria_gfp_mrna.fasta
@@ -1734,6 +1736,7 @@ Technical and scientific disagreement is welcome when it remains respectful, evi
 * [x] Code of conduct
 * [x] Bug-report issue form
 * [x] Feature-request issue form
+* [x] Pull-request template
 * [x] Private security-reporting link
 * [ ] Dependabot version-update configuration
 * [ ] Continuous-integration test workflow
