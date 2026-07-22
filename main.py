@@ -298,6 +298,22 @@ def main() -> None:
 
     for label, value in cosine_ranking:
         print(f"{label}: {value:.4f}")
+    
+    euclidean_json = euclidean_matrix.to_json(
+        indent=2,
+    )
+
+    euclidean_csv = euclidean_matrix.to_csv()
+
+    print("\nEuclidean Matrix JSON Preview:")
+    print(euclidean_json[:300] + "...")
+
+    print("\nEuclidean Matrix CSV Preview:")
+    print(
+        "\n".join(
+            euclidean_csv.splitlines()[:3]
+        )
+    )
 
     print(
         "\nSelected Euclidean Distance:"

@@ -1,4 +1,4 @@
-import math
+import math, json, csv, io
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -293,6 +293,48 @@ class GenomeMatrix:
             "metric": self.metric,
             "kmer_length": self.kmer_length,
         }
+    
+    def to_json(
+        self,
+        indent: int | None = None,
+    ) -> str:
+        return json.dumps(
+            self.to_dict(),
+            indent=indent,
+        )
+
+    def to_csv(
+        self,
+        delimiter: str = ",",
+    ) -> str:
+        output = io.StringIO()
+
+        writer = csv.writer(
+            output,
+            delimiter=delimiter,
+            lineterminator="\n",
+        )
+
+        writer.writerow(
+            [
+                "label",
+                *self.labels,
+            ]
+        )
+
+        for label, row in zip(
+            self.labels,
+            self.values,
+            strict=True,
+        ):
+            writer.writerow(
+                [
+                    label,
+                    *row,
+                ]
+            )
+
+        return output.getvalue()
     
     def rank_by_label(
         self,

@@ -24,10 +24,11 @@ Genome Embeddings aims to build reusable representations of genomic and transcri
 * compared;
 * ranked;
 * converted into numerical vectors;
+* exported into reusable formats;
 * analyzed across multiple sequence scales;
 * integrated with statistical and machine-learning workflows.
 
-The current implementation focuses on explainable DNA descriptors, pairwise comparison, multi-genome comparison matrices and label-based similarity ranking.
+The current implementation focuses on explainable DNA descriptors, pairwise comparison, multi-genome comparison matrices, similarity ranking and structured matrix export.
 
 A major future direction is **multiscale representation**, combining information calculated across multiple k-mer lengths rather than relying on a single value of `k`.
 
@@ -64,7 +65,7 @@ A major future direction is **multiscale representation**, combining information
 * `GenomeCollection`
 * `GenomeMatrix`
 
-### Comparison tools
+### Comparison and export tools
 
 * Raw descriptor vectors
 * Normalized descriptor vectors
@@ -78,6 +79,10 @@ A major future direction is **multiscale representation**, combining information
 * Row-oriented matrix conversion
 * Dictionary matrix conversion
 * Label-based similarity and distance ranking
+* JSON matrix serialization
+* Configurable JSON indentation
+* CSV matrix serialization
+* Configurable CSV delimiter
 * Biological negative controls
 
 ---
@@ -115,7 +120,7 @@ For detailed output:
 python -m pytest -v
 ```
 
-The current test suite contains **75 tests**.
+The current test suite contains **79 tests**.
 
 ---
 
@@ -484,6 +489,75 @@ Example Euclidean ranking:
 ]
 ```
 
+### JSON export
+
+A matrix can be serialized into JSON:
+
+```python
+json_output = matrix.to_json()
+```
+
+Formatted output can be generated with an indentation level:
+
+```python
+json_output = matrix.to_json(
+    indent=2,
+)
+```
+
+Example:
+
+```json
+{
+  "labels": [
+    "Genome A",
+    "Genome B"
+  ],
+  "values": [
+    [
+      0.0,
+      0.12
+    ],
+    [
+      0.12,
+      0.0
+    ]
+  ],
+  "metric": "euclidean",
+  "kmer_length": 3
+}
+```
+
+The JSON representation is generated from `to_dict()`, ensuring that both formats share the same structure.
+
+### CSV export
+
+A matrix can be serialized into CSV:
+
+```python
+csv_output = matrix.to_csv()
+```
+
+Example:
+
+```csv
+label,Genome A,Genome B
+Genome A,0.0,0.12
+Genome B,0.12,0.0
+```
+
+A custom delimiter can also be selected:
+
+```python
+csv_output = matrix.to_csv(
+    delimiter=";",
+)
+```
+
+The CSV output uses a consistent newline terminator across operating systems.
+
+The current methods return serialized strings. Writing those strings directly to files will be introduced through future file-export utilities or a command-line interface.
+
 ---
 
 ## Configurable k-mer Resolution
@@ -643,6 +717,27 @@ These observations are preliminary and do not represent biological validation.
 
 ---
 
+## Demonstration Output
+
+`main.py` currently demonstrates:
+
+* FASTA loading;
+* genome summary generation;
+* descriptor calculation;
+* raw and normalized vector conversion;
+* k-mer frequency calculation;
+* pairwise genome comparison;
+* Euclidean and cosine matrices;
+* ranking relative to a reference genome;
+* label-based matrix lookup;
+* row and dictionary conversion;
+* JSON export preview;
+* CSV export preview.
+
+The previews keep the demonstration readable while verifying the serialization formats.
+
+---
+
 ## Architecture
 
 ```text
@@ -683,7 +778,9 @@ GenomeCollection
                        ├── get_value()
                        ├── to_rows()
                        ├── to_dict()
-                       └── rank_by_label()
+                       ├── rank_by_label()
+                       ├── to_json()
+                       └── to_csv()
 ```
 
 ---
@@ -757,7 +854,10 @@ RNA and ambiguous nucleotide support are planned.
 * [x] Matrix dictionary conversion
 * [x] Biological negative controls
 * [x] Similarity ranking
-* [ ] Matrix export
+* [x] Matrix export
+* [x] JSON serialization
+* [x] CSV serialization
+* [ ] Direct file-writing utilities
 * [ ] Heatmap visualization
 * [ ] Clustering
 
@@ -798,7 +898,10 @@ RNA and ambiguous nucleotide support are planned.
 * [ ] RNA support
 * [ ] Command-line interface
 * [ ] Package distribution
-* [ ] Descriptor and matrix export
+* [ ] Descriptor export
+* [ ] Comparison export
+* [x] Matrix serialization
+* [ ] Embedding export
 * [ ] Visualization tools
 * [ ] Parallel processing
 * [ ] Biological benchmark datasets

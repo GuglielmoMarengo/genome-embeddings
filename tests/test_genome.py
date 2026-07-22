@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import pytest
+import pytest, json, csv, io
 
 from src.genome import (
     Genome,
@@ -1023,3 +1023,97 @@ def test_genome_matrix_rank_by_label_rejects_unknown_label():
         matrix.rank_by_label(
             label="Unknown",
         )
+
+def test_genome_matrix_to_json():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    json_output = matrix.to_json()
+
+    assert json.loads(json_output) == {
+        "labels": ["Genome A", "Genome B"],
+        "values": [
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        "metric": "euclidean",
+        "kmer_length": 3,
+    }
+
+def test_genome_matrix_to_json_supports_indentation():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[
+            [1.0, 0.8],
+            [0.8, 1.0],
+        ],
+        metric="cosine",
+        kmer_length=3,
+    )
+
+    json_output = matrix.to_json(
+        indent=2,
+    )
+
+    assert "\n" in json_output
+    assert '  "labels"' in json_output
+
+def test_genome_matrix_to_csv():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[
+            [0.0, 0.5],
+            [0.5, 0.0],
+        ],
+        metric="euclidean",
+        kmer_length=3,
+    )
+
+    csv_output = matrix.to_csv()
+
+    rows = list(
+        csv.reader(
+            io.StringIO(csv_output)
+        )
+    )
+
+    assert rows == [
+        ["label", "Genome A", "Genome B"],
+        ["Genome A", "0.0", "0.5"],
+        ["Genome B", "0.5", "0.0"],
+    ]
+
+def test_genome_matrix_to_csv_supports_custom_delimiter():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[
+            [1.0, 0.8],
+            [0.8, 1.0],
+        ],
+        metric="cosine",
+        kmer_length=3,
+    )
+
+    csv_output = matrix.to_csv(
+        delimiter=";",
+    )
+
+    rows = list(
+        csv.reader(
+            io.StringIO(csv_output),
+            delimiter=";",
+        )
+    )
+
+    assert rows == [
+        ["label", "Genome A", "Genome B"],
+        ["Genome A", "1.0", "0.8"],
+        ["Genome B", "0.8", "1.0"],
+    ]
