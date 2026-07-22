@@ -7,9 +7,23 @@ from src.genome import (
     GenomeDescriptor,
     GenomeMatrix,
 )
+from src.visualization import (
+    plot_matrix_distribution,
+    plot_matrix_heatmap,
+    plot_pair_trajectory,
+    plot_trajectory_distributions,
+    save_figure,
+)
 
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = (
+    Path(__file__).resolve().parent
+)
+
+OUTPUT_DIR = (
+    PROJECT_ROOT
+    / "outputs"
+)
 
 AEQUOREA_GFP_PATH = (
     PROJECT_ROOT
@@ -67,9 +81,6 @@ GENOME_LABELS = [
 DEFAULT_KMER_LENGTH = 3
 DEFAULT_KMER_LIMIT = 10
 
-DEFAULT_KMER_LENGTH = 3
-DEFAULT_KMER_LIMIT = 10
-
 KMER_SENSITIVITY_LENGTHS = [
     1,
     2,
@@ -77,16 +88,23 @@ KMER_SENSITIVITY_LENGTHS = [
     4,
 ]
 
+REFERENCE_LABEL = "Aequorea GFP"
+COMPARISON_LABEL = "Acropora GFP"
+
+
 def print_genome_summary(
     genome: Genome,
 ) -> None:
     print(f"Header: {genome.header}")
+
     print(
         "Sequence (first 100 bp): "
         f"{genome.sequence[:100]}..."
     )
+
     print(
-        "Reverse complement (first 100 bp): "
+        "Reverse complement "
+        "(first 100 bp): "
         f"{genome.reverse_complement()[:100]}..."
     )
 
@@ -95,35 +113,52 @@ def print_descriptor(
     descriptor: GenomeDescriptor,
 ) -> None:
     print("\nGenome Descriptor:")
-    print(f"Length: {descriptor.length} bp")
     print(
-        f"GC content: "
+        f"Length: {descriptor.length} bp"
+    )
+
+    print(
+        "GC content: "
         f"{descriptor.gc_content * 100:.2f}%"
     )
+
     print(
-        f"AT content: "
+        "AT content: "
         f"{descriptor.at_content * 100:.2f}%"
     )
+
     print(
-        f"Shannon entropy: "
+        "Shannon entropy: "
         f"{descriptor.shannon_entropy:.4f} bits"
     )
-    print(f"GC skew: {descriptor.gc_skew:.4f}")
+
     print(
-        f"Purine content: "
+        f"GC skew: "
+        f"{descriptor.gc_skew:.4f}"
+    )
+
+    print(
+        "Purine content: "
         f"{descriptor.purine_content * 100:.2f}%"
     )
+
     print(
-        f"Pyrimidine content: "
+        "Pyrimidine content: "
         f"{descriptor.pyrimidine_content * 100:.2f}%"
     )
-    print(f"k-mer length: {descriptor.kmer_length}")
+
     print(
-        f"k-mer diversity: "
+        f"k-mer length: "
+        f"{descriptor.kmer_length}"
+    )
+
+    print(
+        "k-mer diversity: "
         f"{descriptor.kmer_diversity:.4f}"
     )
+
     print(
-        f"k-mer entropy: "
+        "k-mer entropy: "
         f"{descriptor.kmer_entropy:.4f} bits"
     )
 
@@ -134,8 +169,13 @@ def print_descriptor_vectors(
     print("\nRaw Descriptor Vector:")
     print(descriptor.to_vector())
 
-    print("\nNormalized Descriptor Vector:")
-    print(descriptor.to_normalized_vector())
+    print(
+        "\nNormalized Descriptor Vector:"
+    )
+
+    print(
+        descriptor.to_normalized_vector()
+    )
 
 
 def print_kmer_frequencies(
@@ -148,13 +188,21 @@ def print_kmer_frequencies(
         f"k-mer frequencies (k={k}):"
     )
 
-    frequencies = genome.kmer_frequencies(k)
+    frequencies = (
+        genome.kmer_frequencies(k)
+    )
 
-    for index, (kmer, frequency) in enumerate(
+    for index, (
+        kmer,
+        frequency,
+    ) in enumerate(
         frequencies.items(),
         start=1,
     ):
-        print(f"{kmer}: {frequency} times")
+        print(
+            f"{kmer}: "
+            f"{frequency} times"
+        )
 
         if index == limit:
             break
@@ -164,12 +212,14 @@ def print_genome_comparison(
     comparison: GenomeComparison,
 ) -> None:
     print("\nGenome Comparison:")
+
     print(
-        f"Euclidean distance: "
+        "Euclidean distance: "
         f"{comparison.euclidean_distance:.4f}"
     )
+
     print(
-        f"Cosine similarity: "
+        "Cosine similarity: "
         f"{comparison.cosine_similarity:.4f}"
     )
 
@@ -178,8 +228,14 @@ def print_genome_comparison(
     for (
         feature_name,
         difference,
-    ) in comparison.sorted_feature_differences():
-        print(f"{feature_name}: {difference:.4f}")
+    ) in (
+        comparison
+        .sorted_feature_differences()
+    ):
+        print(
+            f"{feature_name}: "
+            f"{difference:.4f}"
+        )
 
 
 def print_genome_matrix(
@@ -199,8 +255,12 @@ def print_genome_matrix(
     )
 
     metric_title = {
-        "euclidean": "Euclidean Distance Matrix",
-        "cosine": "Cosine Similarity Matrix",
+        "euclidean": (
+            "Euclidean Distance Matrix"
+        ),
+        "cosine": (
+            "Cosine Similarity Matrix"
+        ),
     }[matrix.metric]
 
     print(
@@ -208,10 +268,14 @@ def print_genome_matrix(
         f"(k={matrix.kmer_length}):"
     )
 
-    header = " " * (label_width + 2)
+    header = (
+        " " * (label_width + 2)
+    )
 
     for label in matrix.labels:
-        header += f"{label:>{value_width}}"
+        header += (
+            f"{label:>{value_width}}"
+        )
 
     print(header)
 
@@ -230,17 +294,21 @@ def print_genome_matrix(
             f"{formatted_values}"
         )
 
+
 def print_matrix_trajectory(
     trajectory: dict[int, list[float]],
     metric_name: str,
     preview_limit: int = 3,
 ) -> None:
     print(
-        f"\n{metric_name} Matrix-Geometry Trajectory:"
+        f"\n{metric_name} "
+        "Matrix-Geometry Trajectory:"
     )
 
     for k, vector in trajectory.items():
-        preview = vector[:preview_limit]
+        preview = (
+            vector[:preview_limit]
+        )
 
         print(
             f"k={k}: "
@@ -256,46 +324,197 @@ def print_pair_trajectory(
     metric_name: str,
 ) -> None:
     print(
-        f"\n{row_label} -> {column_label} "
+        f"\n{row_label} -> "
+        f"{column_label} "
         f"{metric_name} Pair Trajectory:"
     )
 
     for k, value in trajectory.items():
-        print(f"k={k}: {value:.4f}")
+        print(
+            f"k={k}: {value:.4f}"
+        )
+
 
 def load_genomes() -> list[Genome]:
     return [
-        Genome.from_fasta(AEQUOREA_GFP_PATH),
-        Genome.from_fasta(ACROPORA_GFP_PATH),
-        Genome.from_fasta(DISCOSOMA_FP583_PATH),
-        Genome.from_fasta(STAPHYLOCOCCUS_AUREUS_CATA_PATH),
-        Genome.from_fasta(SACCHAROMYCES_CEREVISIAE_TPI1_PATH),
-        Genome.from_fasta(PERIODIC_CONTROL_PATH),
+        Genome.from_fasta(
+            AEQUOREA_GFP_PATH
+        ),
+        Genome.from_fasta(
+            ACROPORA_GFP_PATH
+        ),
+        Genome.from_fasta(
+            DISCOSOMA_FP583_PATH
+        ),
+        Genome.from_fasta(
+            STAPHYLOCOCCUS_AUREUS_CATA_PATH
+        ),
+        Genome.from_fasta(
+            SACCHAROMYCES_CEREVISIAE_TPI1_PATH
+        ),
+        Genome.from_fasta(
+            PERIODIC_CONTROL_PATH
+        ),
     ]
+
+
+def save_visualizations(
+    euclidean_matrix: GenomeMatrix,
+    cosine_matrix: GenomeMatrix,
+    euclidean_trajectory: dict[
+        int,
+        list[float],
+    ],
+    cosine_trajectory: dict[
+        int,
+        list[float],
+    ],
+    euclidean_pair_trajectory: dict[
+        int,
+        float,
+    ],
+    cosine_pair_trajectory: dict[
+        int,
+        float,
+    ],
+) -> list[Path]:
+    figures = [
+        (
+            "euclidean_heatmap.png",
+            plot_matrix_heatmap(
+                euclidean_matrix
+            ),
+        ),
+        (
+            "cosine_heatmap.png",
+            plot_matrix_heatmap(
+                cosine_matrix
+            ),
+        ),
+        (
+            (
+                "aequorea_acropora_"
+                "euclidean_trajectory.png"
+            ),
+            plot_pair_trajectory(
+                trajectory=(
+                    euclidean_pair_trajectory
+                ),
+                row_label=REFERENCE_LABEL,
+                column_label=COMPARISON_LABEL,
+                metric="euclidean",
+            ),
+        ),
+        (
+            (
+                "aequorea_acropora_"
+                "cosine_trajectory.png"
+            ),
+            plot_pair_trajectory(
+                trajectory=(
+                    cosine_pair_trajectory
+                ),
+                row_label=REFERENCE_LABEL,
+                column_label=COMPARISON_LABEL,
+                metric="cosine",
+            ),
+        ),
+        (
+            "euclidean_distribution.png",
+            plot_matrix_distribution(
+                euclidean_matrix
+            ),
+        ),
+        (
+            "cosine_distribution.png",
+            plot_matrix_distribution(
+                cosine_matrix
+            ),
+        ),
+        (
+            (
+                "euclidean_multi_k_"
+                "distribution.png"
+            ),
+            plot_trajectory_distributions(
+                trajectory=(
+                    euclidean_trajectory
+                ),
+                metric="euclidean",
+            ),
+        ),
+        (
+            (
+                "cosine_multi_k_"
+                "distribution.png"
+            ),
+            plot_trajectory_distributions(
+                trajectory=(
+                    cosine_trajectory
+                ),
+                metric="cosine",
+            ),
+        ),
+    ]
+
+    output_paths = []
+
+    for filename, figure in figures:
+        output_path = save_figure(
+            figure=figure,
+            output_path=(
+                OUTPUT_DIR
+                / filename
+            ),
+            close=True,
+        )
+
+        output_paths.append(
+            output_path
+        )
+
+    return output_paths
 
 
 def main() -> None:
     genomes = load_genomes()
-    collection = GenomeCollection(genomes)
+
+    collection = GenomeCollection(
+        genomes
+    )
 
     reference_genome = genomes[0]
     comparison_genome = genomes[1]
 
-    reference_descriptor = reference_genome.descriptor(
-        k=DEFAULT_KMER_LENGTH
+    reference_descriptor = (
+        reference_genome.descriptor(
+            k=DEFAULT_KMER_LENGTH
+        )
     )
 
-    comparison_descriptor = comparison_genome.descriptor(
-        k=DEFAULT_KMER_LENGTH
+    comparison_descriptor = (
+        comparison_genome.descriptor(
+            k=DEFAULT_KMER_LENGTH
+        )
     )
 
-    comparison = reference_descriptor.compare(
-        comparison_descriptor
+    comparison = (
+        reference_descriptor.compare(
+            comparison_descriptor
+        )
     )
 
-    print_genome_summary(reference_genome)
-    print_descriptor(reference_descriptor)
-    print_descriptor_vectors(reference_descriptor)
+    print_genome_summary(
+        reference_genome
+    )
+
+    print_descriptor(
+        reference_descriptor
+    )
+
+    print_descriptor_vectors(
+        reference_descriptor
+    )
 
     print_kmer_frequencies(
         reference_genome,
@@ -303,77 +522,118 @@ def main() -> None:
         limit=DEFAULT_KMER_LIMIT,
     )
 
-    print_genome_comparison(comparison)
+    print_genome_comparison(
+        comparison
+    )
 
     euclidean_matrix = (
-        collection.euclidean_distance_matrix(
+        collection
+        .euclidean_distance_matrix(
             labels=GENOME_LABELS,
             k=DEFAULT_KMER_LENGTH,
         )
     )
 
     cosine_matrix = (
-        collection.cosine_similarity_matrix(
+        collection
+        .cosine_similarity_matrix(
             labels=GENOME_LABELS,
             k=DEFAULT_KMER_LENGTH,
         )
     )
 
-    print_genome_matrix(euclidean_matrix)
-    print_genome_matrix(cosine_matrix)
-
-    euclidean_ranking = euclidean_matrix.rank_by_label(
-        label="Aequorea GFP",
+    print_genome_matrix(
+        euclidean_matrix
     )
 
-    cosine_ranking = cosine_matrix.rank_by_label(
-        label="Aequorea GFP",
+    print_genome_matrix(
+        cosine_matrix
     )
 
-    print("\nEuclidean Ranking from Aequorea GFP:")
+    euclidean_ranking = (
+        euclidean_matrix.rank_by_label(
+            label=REFERENCE_LABEL,
+        )
+    )
 
-    for label, value in euclidean_ranking:
-        print(f"{label}: {value:.4f}")
+    cosine_ranking = (
+        cosine_matrix.rank_by_label(
+            label=REFERENCE_LABEL,
+        )
+    )
 
-    print("\nCosine Ranking from Aequorea GFP:")
+    print(
+        "\nEuclidean Ranking "
+        f"from {REFERENCE_LABEL}:"
+    )
 
-    for label, value in cosine_ranking:
-        print(f"{label}: {value:.4f}")
+    for label, value in (
+        euclidean_ranking
+    ):
+        print(
+            f"{label}: {value:.4f}"
+        )
+
+    print(
+        "\nCosine Ranking "
+        f"from {REFERENCE_LABEL}:"
+    )
+
+    for label, value in (
+        cosine_ranking
+    ):
+        print(
+            f"{label}: {value:.4f}"
+        )
 
     euclidean_trajectory = (
-        collection.euclidean_matrix_trajectory(
+        collection
+        .euclidean_matrix_trajectory(
             labels=GENOME_LABELS,
-            k_values=KMER_SENSITIVITY_LENGTHS,
+            k_values=(
+                KMER_SENSITIVITY_LENGTHS
+            ),
         )
     )
 
     cosine_trajectory = (
-        collection.cosine_matrix_trajectory(
+        collection
+        .cosine_matrix_trajectory(
             labels=GENOME_LABELS,
-            k_values=KMER_SENSITIVITY_LENGTHS,
+            k_values=(
+                KMER_SENSITIVITY_LENGTHS
+            ),
         )
     )
 
-    aequorea_acropora_euclidean_trajectory = (
-        collection.euclidean_pair_trajectory(
+    euclidean_pair_trajectory = (
+        collection
+        .euclidean_pair_trajectory(
             labels=GENOME_LABELS,
-            row_label="Aequorea GFP",
-            column_label="Acropora GFP",
-            k_values=KMER_SENSITIVITY_LENGTHS,
+            row_label=REFERENCE_LABEL,
+            column_label=COMPARISON_LABEL,
+            k_values=(
+                KMER_SENSITIVITY_LENGTHS
+            ),
         )
     )
 
-    aequorea_acropora_cosine_trajectory = (
-        collection.cosine_pair_trajectory(
+    cosine_pair_trajectory = (
+        collection
+        .cosine_pair_trajectory(
             labels=GENOME_LABELS,
-            row_label="Aequorea GFP",
-            column_label="Acropora GFP",
-            k_values=KMER_SENSITIVITY_LENGTHS,
+            row_label=REFERENCE_LABEL,
+            column_label=COMPARISON_LABEL,
+            k_values=(
+                KMER_SENSITIVITY_LENGTHS
+            ),
         )
     )
 
     print_matrix_trajectory(
-        trajectory=euclidean_trajectory,
+        trajectory=(
+            euclidean_trajectory
+        ),
         metric_name="Euclidean",
     )
 
@@ -384,35 +644,92 @@ def main() -> None:
 
     print_pair_trajectory(
         trajectory=(
-            aequorea_acropora_euclidean_trajectory
+            euclidean_pair_trajectory
         ),
-        row_label="Aequorea GFP",
-        column_label="Acropora GFP",
+        row_label=REFERENCE_LABEL,
+        column_label=COMPARISON_LABEL,
         metric_name="Euclidean",
     )
 
     print_pair_trajectory(
         trajectory=(
-            aequorea_acropora_cosine_trajectory
+            cosine_pair_trajectory
         ),
-        row_label="Aequorea GFP",
-        column_label="Acropora GFP",
+        row_label=REFERENCE_LABEL,
+        column_label=COMPARISON_LABEL,
         metric_name="Cosine",
     )
-    
-    euclidean_json = euclidean_matrix.to_json(
-        indent=2,
+
+    visualization_paths = (
+        save_visualizations(
+            euclidean_matrix=(
+                euclidean_matrix
+            ),
+            cosine_matrix=(
+                cosine_matrix
+            ),
+            euclidean_trajectory=(
+                euclidean_trajectory
+            ),
+            cosine_trajectory=(
+                cosine_trajectory
+            ),
+            euclidean_pair_trajectory=(
+                euclidean_pair_trajectory
+            ),
+            cosine_pair_trajectory=(
+                cosine_pair_trajectory
+            ),
+        )
     )
 
-    euclidean_csv = euclidean_matrix.to_csv()
+    print(
+        "\nGenerated Visualizations:"
+    )
 
-    print("\nEuclidean Matrix JSON Preview:")
-    print(euclidean_json[:300] + "...")
+    for path in visualization_paths:
+        print(
+            path.relative_to(
+                PROJECT_ROOT
+            )
+        )
 
-    print("\nEuclidean Matrix CSV Preview:")
+    euclidean_json = (
+        euclidean_matrix.to_json(
+            indent=2,
+        )
+    )
+
+    euclidean_csv = (
+        euclidean_matrix.to_csv()
+    )
+
+    print(
+        "\nEuclidean Matrix "
+        "JSON Preview:"
+    )
+
+    print(
+        euclidean_json[:300]
+        + "..."
+    )
+
+    print(
+        "\nEuclidean Matrix "
+        "CSV Preview:"
+    )
+
     print(
         "\n".join(
-            euclidean_csv.splitlines()[:3]
+            euclidean_csv
+            .splitlines()[:3]
+        )
+    )
+
+    selected_distance = (
+        euclidean_matrix.get_value(
+            row_label=REFERENCE_LABEL,
+            column_label=COMPARISON_LABEL,
         )
     )
 
@@ -420,26 +737,46 @@ def main() -> None:
         "\nSelected Euclidean Distance:"
     )
 
-    selected_distance = euclidean_matrix.get_value(
-        row_label="Aequorea GFP",
-        column_label="Acropora GFP",
-    )
-
     print(
-        "Aequorea GFP -> Acropora GFP: "
+        f"{REFERENCE_LABEL} -> "
+        f"{COMPARISON_LABEL}: "
         f"{selected_distance:.4f}"
     )
 
-    matrix_rows = euclidean_matrix.to_rows()
-    matrix_dict = euclidean_matrix.to_dict()
+    matrix_rows = (
+        euclidean_matrix.to_rows()
+    )
 
-    print("\nFirst Euclidean Matrix Row:")
-    print(matrix_rows[0])
+    matrix_dict = (
+        euclidean_matrix.to_dict()
+    )
 
-    print("\nEuclidean Matrix Metadata:")
-    print(f"Metric: {matrix_dict['metric']}")
-    print(f"k-mer length: {matrix_dict['kmer_length']}")
-    print(f"Labels: {matrix_dict['labels']}")
+    print(
+        "\nFirst Euclidean Matrix Row:"
+    )
+
+    print(
+        matrix_rows[0]
+    )
+
+    print(
+        "\nEuclidean Matrix Metadata:"
+    )
+
+    print(
+        f"Metric: "
+        f"{matrix_dict['metric']}"
+    )
+
+    print(
+        "k-mer length: "
+        f"{matrix_dict['kmer_length']}"
+    )
+
+    print(
+        f"Labels: "
+        f"{matrix_dict['labels']}"
+    )
 
 
 if __name__ == "__main__":

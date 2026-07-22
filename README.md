@@ -11,7 +11,15 @@ Genome Embeddings is an open-source Python project for representing genomic sequ
 
 Rather than relying exclusively on neural networks, the project explores transparent and reproducible representations inspired by information theory, statistics, graph theory and number theory.
 
-The current implementation supports sequence descriptors, pairwise comparison, multi-genome matrices, matrix serialization and exploratory multiscale analysis across multiple k-mer lengths.
+The current implementation supports:
+
+* sequence-level mathematical descriptors;
+* pairwise genome comparison;
+* multi-genome distance and similarity matrices;
+* matrix serialization;
+* multiscale k-mer sensitivity analysis;
+* matrix-geometry trajectories;
+* graphical analysis through heatmaps, distributions and trajectory plots.
 
 > This project is currently intended for research and software-development purposes. Any future clinical or diagnostic use would require extensive biological, statistical, clinical and regulatory validation.
 
@@ -27,6 +35,7 @@ Genome Embeddings aims to develop reusable representations of genomic and transc
 * ranked;
 * converted into numerical vectors;
 * exported into reusable formats;
+* visualized;
 * analyzed across multiple sequence scales;
 * integrated with statistical and machine-learning workflows.
 
@@ -78,7 +87,7 @@ The long-term objective is to investigate whether interpretable mathematical des
 * Label-based matrix lookup
 * Distance and similarity ranking
 
-### Matrix conversion and export
+### Matrix conversion and serialization
 
 * Row-oriented matrix conversion
 * Dictionary conversion
@@ -95,10 +104,21 @@ The long-term objective is to investigate whether interpretable mathematical des
 * Multi-`k` Euclidean matrices
 * Multi-`k` cosine matrices
 * Ordered matrix collections
-* Duplicate `k` validation
+* Empty and duplicate `k` validation
 * Matrix-geometry trajectories
 * Pair-specific trajectories
 * Euclidean and cosine sensitivity analysis across `k`
+
+### Visualization
+
+* Euclidean distance heatmaps
+* Cosine similarity heatmaps
+* Pair-trajectory line plots
+* Matrix-value distributions
+* Multi-`k` distribution plots
+* PNG export
+* Automatic output-directory creation
+* Headless visualization testing
 
 ---
 
@@ -114,7 +134,7 @@ cd genome-embeddings
 Install the dependencies:
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 Run the demonstration:
@@ -135,7 +155,20 @@ For detailed output:
 python -m pytest -v
 ```
 
-The current test suite contains **116 tests**.
+The current test suite contains **126 tests**.
+
+---
+
+## Dependencies
+
+The project currently uses:
+
+```text
+matplotlib>=3.10
+pytest>=8.3
+```
+
+Matplotlib is isolated in the visualization module. The core mathematical classes do not depend directly on plotting code.
 
 ---
 
@@ -544,8 +577,6 @@ Example:
 }
 ```
 
-The JSON representation is generated from `to_dict()`, ensuring structural consistency.
-
 ### CSV
 
 ```python
@@ -567,8 +598,6 @@ csv_output = matrix.to_csv(
     delimiter=";",
 )
 ```
-
-The CSV output uses a consistent newline terminator across operating systems.
 
 The current serialization methods return strings. Direct file-writing utilities are planned separately.
 
@@ -708,7 +737,7 @@ matrices = collection.cosine_similarity_matrices(
 )
 ```
 
-The result is an ordered dictionary-like mapping:
+The result is an ordered mapping:
 
 ```python
 {
@@ -764,13 +793,11 @@ trajectory = collection.cosine_matrix_trajectory(
 
 Each vector represents the global geometry of the dataset at one k-mer scale.
 
-The sequence of vectors describes how that geometry changes as `k` increases.
-
 ---
 
 ## Pair Trajectories
 
-A specific genome pair can also be followed across multiple values of `k`.
+A specific genome pair can be followed across multiple values of `k`.
 
 ### Euclidean pair trajectory
 
@@ -806,6 +833,147 @@ Example:
 ```
 
 Pair trajectories make it possible to investigate whether the relationship between two sequences is stable or scale-dependent.
+
+---
+
+## Visualization
+
+Visualization functions are implemented in:
+
+```text
+src/visualization.py
+```
+
+The visualization layer consumes existing `GenomeMatrix` objects and trajectories without modifying the core mathematical model.
+
+### Matrix heatmaps
+
+```python
+from src.visualization import (
+    plot_matrix_heatmap,
+)
+
+figure = plot_matrix_heatmap(
+    euclidean_matrix
+)
+```
+
+The function supports:
+
+* Euclidean matrices;
+* cosine matrices;
+* automatic metric titles;
+* genome labels on both axes;
+* optional numerical annotations;
+* configurable decimal places.
+
+Example without annotations:
+
+```python
+figure = plot_matrix_heatmap(
+    cosine_matrix,
+    annotate=False,
+)
+```
+
+### Pair-trajectory plots
+
+```python
+from src.visualization import (
+    plot_pair_trajectory,
+)
+
+figure = plot_pair_trajectory(
+    trajectory=euclidean_pair_trajectory,
+    row_label="Aequorea GFP",
+    column_label="Acropora GFP",
+    metric="euclidean",
+)
+```
+
+The x-axis represents k-mer length. The y-axis represents the selected distance or similarity metric.
+
+### Matrix-value distributions
+
+```python
+from src.visualization import (
+    plot_matrix_distribution,
+)
+
+figure = plot_matrix_distribution(
+    euclidean_matrix
+)
+```
+
+Only unique pairwise values from the upper triangle are included.
+
+The diagonal and mirrored lower triangle are excluded.
+
+### Multi-k distributions
+
+```python
+from src.visualization import (
+    plot_trajectory_distributions,
+)
+
+figure = plot_trajectory_distributions(
+    trajectory=euclidean_trajectory,
+    metric="euclidean",
+)
+```
+
+Each box represents the distribution of unique pairwise comparisons at one value of `k`.
+
+### Saving figures
+
+```python
+from src.visualization import (
+    save_figure,
+)
+
+saved_path = save_figure(
+    figure=figure,
+    output_path=(
+        "outputs/euclidean_heatmap.png"
+    ),
+    dpi=150,
+    close=True,
+)
+```
+
+The destination directory is created automatically when needed.
+
+---
+
+## Generated Visualizations
+
+Running:
+
+```bash
+python main.py
+```
+
+generates:
+
+```text
+outputs/
+├── aequorea_acropora_cosine_trajectory.png
+├── aequorea_acropora_euclidean_trajectory.png
+├── cosine_distribution.png
+├── cosine_heatmap.png
+├── cosine_multi_k_distribution.png
+├── euclidean_distribution.png
+├── euclidean_heatmap.png
+└── euclidean_multi_k_distribution.png
+```
+
+The `outputs/` directory is excluded through `.gitignore` because the images are generated artifacts.
+
+Selected figures intended for permanent documentation may later be stored separately under:
+
+```text
+docs/images/
+```
 
 ---
 
@@ -866,30 +1034,6 @@ normalized_shannon_entropy: 0.0160
 kmer_diversity: 0.0156
 purine_content: 0.0052
 normalized_gc_skew: 0.0047
-```
-
-### Euclidean distance matrix at `k = 3`
-
-```text
-                            Aequorea GFP   Acropora GFP   Discosoma FP583   S. aureus catA   S. cerevisiae TPI1   Periodic control
-Aequorea GFP                      0.0000         0.0656            0.1102            0.2074               0.0842             1.1187
-Acropora GFP                      0.0656         0.0000            0.0795            0.2649               0.0497             1.1358
-Discosoma FP583                   0.1102         0.0795            0.0000            0.2625               0.0710             1.1393
-S. aureus catA                    0.2074         0.2649            0.2625            0.0000               0.2544             1.0612
-S. cerevisiae TPI1                0.0842         0.0497            0.0710            0.2544               0.0000             1.1286
-Periodic control                  1.1187         1.1358            1.1393            1.0612               1.1286             0.0000
-```
-
-### Cosine similarity matrix at `k = 3`
-
-```text
-                            Aequorea GFP   Acropora GFP   Discosoma FP583   S. aureus catA   S. cerevisiae TPI1   Periodic control
-Aequorea GFP                      1.0000         0.9996            0.9990            0.9954               0.9992             0.8071
-Acropora GFP                      0.9996         1.0000            0.9993            0.9930               0.9997             0.8110
-Discosoma FP583                   0.9990         0.9993            1.0000            0.9947               0.9995             0.8189
-S. aureus catA                    0.9954         0.9930            0.9947            1.0000               0.9936             0.7994
-S. cerevisiae TPI1                0.9992         0.9997            0.9995            0.9936               1.0000             0.8130
-Periodic control                  0.8071         0.8110            0.8189            0.7994               0.8130             1.0000
 ```
 
 ### Ranking from *Aequorea victoria* GFP
@@ -979,11 +1123,16 @@ Within the current descriptor space:
 * cosine similarity remains highly compressed among biological sequences;
 * the *Aequorea*–*Acropora* Euclidean relationship is stable for `k = 1, 2, 3` and changes more visibly at `k = 4`.
 
+The visualizations make these patterns easier to inspect:
+
+* heatmaps expose matrix structure;
+* distribution plots show metric compression and separation;
+* pair trajectories show scale-dependent changes;
+* multi-`k` distributions show how global pairwise relationships vary with `k`.
+
 The proximity of `TPI1` to the fluorescent-protein sequences shows that the current representation does not distinguish protein function.
 
 The descriptors likely capture broad compositional, taxonomic or coding-sequence properties.
-
-The scale-dependent variation observed at `k = 4` is an exploratory multiscale observation, not evidence of a specific biological mechanism.
 
 These results are preliminary and do not represent biological validation.
 
@@ -1004,6 +1153,11 @@ These results are preliminary and do not represent biological validation.
 * multi-`k` matrix generation;
 * matrix-geometry trajectories;
 * pair-specific trajectories;
+* heatmap generation;
+* pair-trajectory plotting;
+* matrix distributions;
+* multi-`k` distributions;
+* PNG export;
 * JSON export preview;
 * CSV export preview;
 * label-based lookup;
@@ -1060,21 +1214,13 @@ Multiple Genome objects
 GenomeCollection
       │
       ├── descriptors(k)
-      │
       ├── euclidean_distance_matrix()
-      │
       ├── cosine_similarity_matrix()
-      │
       ├── euclidean_distance_matrices()
-      │
       ├── cosine_similarity_matrices()
-      │
       ├── euclidean_matrix_trajectory()
-      │
       ├── cosine_matrix_trajectory()
-      │
       ├── euclidean_pair_trajectory()
-      │
       └── cosine_pair_trajectory()
                        │
                        ▼
@@ -1089,6 +1235,15 @@ GenomeCollection
                        ├── to_upper_triangle_vector()
                        ├── upper_triangle_pairs()
                        └── to_upper_triangle_rows()
+                               │
+                               ▼
+                       visualization.py
+                               │
+                               ├── plot_matrix_heatmap()
+                               ├── plot_pair_trajectory()
+                               ├── plot_matrix_distribution()
+                               ├── plot_trajectory_distributions()
+                               └── save_figure()
 ```
 
 ---
@@ -1108,17 +1263,23 @@ genome-embeddings/
 │       │   ├── staphylococcus_aureus_cata_cds.fasta
 │       │   └── saccharomyces_cerevisiae_tpi1_cds.fasta
 │       └── periodic_sequence.fasta
+├── outputs/
 ├── src/
-│   └── genome.py
+│   ├── genome.py
+│   └── visualization.py
 ├── tests/
 │   ├── data/
 │   │   └── example.fasta
-│   └── test_genome.py
+│   ├── test_genome.py
+│   └── test_visualization.py
+├── .gitignore
 ├── main.py
 ├── README.md
 ├── requirements.txt
 └── LICENSE
 ```
+
+`outputs/` is generated automatically and excluded from Git.
 
 ---
 
@@ -1142,9 +1303,36 @@ The current implementation validates:
 * supported matrix metrics;
 * unknown matrix labels;
 * empty multi-`k` requests;
-* duplicate k-mer lengths.
+* duplicate k-mer lengths;
+* empty visualization trajectories;
+* empty distribution vectors;
+* invalid histogram bins;
+* negative decimal places;
+* invalid output DPI values.
 
-RNA and ambiguous nucleotide support are planned.
+---
+
+## Testing Visualizations
+
+Visualization tests use Matplotlib's non-interactive backend:
+
+```python
+matplotlib.use("Agg")
+```
+
+This allows figures to be created and saved during automated tests without opening graphical windows.
+
+The visualization tests verify:
+
+* figure creation;
+* titles and axis labels;
+* heatmap annotations;
+* trajectory values;
+* k-mer tick labels;
+* empty-input validation;
+* output-directory creation;
+* PNG file creation;
+* returned output paths.
 
 ---
 
@@ -1181,7 +1369,9 @@ RNA and ambiguous nucleotide support are planned.
 * [x] Initial k-mer sensitivity analysis
 * [x] Matrix-geometry trajectories
 * [x] Pair-specific trajectories
-* [ ] Cross-scale trajectory distances
+* [ ] Pair-trajectory step differences
+* [ ] Cross-scale matrix distances
+* [ ] Pair contributions to matrix deformation
 * [ ] Cross-scale stability metrics
 * [ ] Ranking stability analysis
 * [ ] Clustering stability analysis
@@ -1192,16 +1382,24 @@ RNA and ambiguous nucleotide support are planned.
 * [ ] Scale weighting
 * [ ] Cross-scale normalization
 
-### Visualization and analysis
+### Visualization
 
-* [ ] Heatmap visualization
-* [ ] Trajectory plots
-* [ ] Pair-trajectory plots
-* [ ] Clustering
-* [ ] Dimensionality reduction
-* [ ] Statistical significance analysis
+* [x] Euclidean heatmap
+* [x] Cosine heatmap
+* [x] Pair-trajectory plots
+* [x] Matrix-value distributions
+* [x] Multi-`k` distribution plots
+* [x] PNG export
+* [x] Headless visualization testing
+* [ ] Highlighted pairwise-value plots
+* [ ] Full matrix-trajectory plots
+* [ ] Cross-scale deformation plots
+* [ ] Ranking-stability plots
+* [ ] Clustering dendrograms
+* [ ] Dimensionality-reduction plots
+* [ ] Permanent README figures under `docs/images/`
 
-### Future descriptors
+### Future descriptors and metrics
 
 * [ ] Conditional entropy
 * [ ] Block entropy
@@ -1209,6 +1407,8 @@ RNA and ambiguous nucleotide support are planned.
 * [ ] Mutual information
 * [ ] Jensen-Shannon divergence
 * [ ] Dinucleotide statistics
+* [ ] Full k-mer frequency vectors
+* [ ] Hybrid descriptor vectors
 * [ ] Codon-usage descriptors
 * [ ] Reading-frame-aware descriptors
 * [ ] Graph-based descriptors
@@ -1274,6 +1474,18 @@ This representation may support the identification of:
 * differences between distance metrics;
 * exploratory multiscale mutation signatures.
 
+### Visual exploration
+
+The visualization layer provides graphical views of:
+
+* matrix structure;
+* metric compression;
+* pairwise-value distributions;
+* changes across k-mer scales;
+* pair-specific trajectories.
+
+Visual evidence remains exploratory and must later be supported by formal stability metrics and statistical testing.
+
 ### Future multiscale embeddings
 
 Future work may combine features from several k-mer scales into one representation:
@@ -1314,6 +1526,8 @@ Important research topics include:
 
 > Can matrix-geometry trajectories reveal stable, scale-dependent or anomalous sequence relationships?
 
+> Can graphical analysis expose meaningful multiscale patterns that can later be quantified through formal stability metrics?
+
 > Can multiscale comparison geometries support an exploratory method for detecting and characterizing mutation signatures?
 
 ---
@@ -1326,9 +1540,12 @@ Important research topics include:
 * Sliding-window triplets are not equivalent to reading-frame-aware codons.
 * The example dataset is too small for biological validation.
 * Cosine similarity is highly compressed in the current descriptor space.
+* Histograms currently contain only 15 unique pairwise observations for the six-sequence dataset.
+* Box plots summarize small exploratory samples.
+* Visualization does not replace statistical testing.
 * No statistical significance testing is currently implemented.
 * No phylogenetic, structural or functional inference should be made from the current results.
-* Multiscale trajectories are currently exploratory representations, not validated biological signatures.
+* Multiscale trajectories are exploratory representations, not validated biological signatures.
 
 ---
 
