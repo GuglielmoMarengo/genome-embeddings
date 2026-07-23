@@ -24,6 +24,8 @@ The current implementation supports:
 * matrix-geometry trajectories;
 * cross-scale trajectory-change analysis;
 * pair contributions to matrix deformation;
+* full-dataset versus biological-only multiscale comparison;
+* squared-deformation partitioning for synthetic-control effects;
 * graphical analysis through heatmaps, distributions and trajectory plots;
 * structured security, contribution, issue-reporting and pull-request workflows.
 
@@ -131,6 +133,9 @@ The project follows these principles:
 * Signed pair-trajectory step differences
 * Cross-scale matrix-trajectory distances
 * Pair contributions to matrix deformation
+* Full-dataset versus biological-only trajectory comparison
+* Relative step-distance reduction after control removal
+* Squared-deformation shares for control-associated and biological-only pairs
 * Euclidean and cosine sensitivity analysis across `k`
 
 ### Visualization
@@ -1327,6 +1332,82 @@ k=2 -> k=3: 0.185453
 k=3 -> k=4: 0.035751
 ```
 
+### Full dataset versus biological-only dataset
+
+The full dataset contains six sequences and therefore 15 unique pairwise coordinates.
+
+The biological-only dataset excludes the synthetic periodic control, contains five sequences and therefore 10 unique pairwise coordinates.
+
+Euclidean matrix-step comparison:
+
+```text
+k=1 -> k=2:
+full=1.702979
+biological-only=0.003742
+relative reduction=99.78%
+
+k=2 -> k=3:
+full=0.499185
+biological-only=0.017912
+relative reduction=96.41%
+
+k=3 -> k=4:
+full=0.264115
+biological-only=0.152537
+relative reduction=42.25%
+```
+
+Cosine matrix-step comparison:
+
+```text
+k=1 -> k=2:
+full=0.233006
+biological-only=0.000061
+relative reduction=99.97%
+
+k=2 -> k=3:
+full=0.185453
+biological-only=0.001222
+relative reduction=99.34%
+
+k=3 -> k=4:
+full=0.035751
+biological-only=0.008622
+relative reduction=75.88%
+```
+
+The relative reduction is calculated as:
+
+```text
+(full step distance - biological-only step distance)
+────────────────────────────────────────────────────
+full step distance
+```
+
+This quantity measures the reduction in the global step distance after removing the periodic control. Because Euclidean norms are not additive, it is a comparative reduction rather than an exact contribution share.
+
+### Squared-deformation partitioning
+
+For an exact additive decomposition, each pairwise step difference is squared:
+
+```text
+total squared deformation = Σ pairwise difference²
+```
+
+The coordinates can then be divided into:
+
+```text
+control-associated pairs
++
+biological-only pairs
+=
+total squared deformation
+```
+
+This partition quantifies the fraction of squared matrix deformation associated with pairs containing the synthetic periodic control.
+
+The current demonstration calculates this partition separately for Euclidean and cosine trajectories. The calculation is exploratory and dataset-specific; it must not be interpreted as a general biological effect size.
+
 ---
 
 ## Interpretation
@@ -1341,6 +1422,9 @@ Within the current descriptor space:
 * the *Aequorea*–*Acropora* Euclidean relationship is stable for `k = 1, 2, 3` and changes more visibly at `k = 4`;
 * the largest global matrix deformation occurs between `k = 1` and `k = 2`;
 * many of the strongest cross-scale changes involve the synthetic periodic control;
+* removing the periodic control reduces the first two Euclidean step distances by more than 96%;
+* removing the periodic control reduces the first two cosine step distances by more than 99%;
+* the biological-only Euclidean geometry changes more substantially between `k = 3` and `k = 4`;
 * more specific changes between biological sequences begin to appear at higher `k`.
 
 The visualizations make these patterns easier to inspect:
@@ -1358,7 +1442,9 @@ The cross-scale analysis distinguishes three complementary levels of change:
 
 * pair step differences quantify how one selected relationship changes;
 * matrix step distances quantify deformation of the complete dataset geometry;
-* pair-contribution rankings identify which relationships drive that deformation.
+* pair-contribution rankings identify which relationships drive that deformation;
+* full versus biological-only comparisons show how strongly a synthetic control influences global geometry;
+* squared-deformation partitioning provides an additive separation between control-associated and biological-only changes.
 
 These results are preliminary and do not represent biological validation.
 
@@ -1382,6 +1468,9 @@ These results are preliminary and do not represent biological validation.
 * signed pair-trajectory step differences;
 * cross-scale matrix distances;
 * pair contributions to matrix deformation;
+* full-dataset versus biological-only trajectory comparison;
+* relative step-distance reduction after periodic-control removal;
+* squared-deformation partitioning by pair category;
 * heatmap generation;
 * pair-trajectory plotting;
 * matrix distributions;
@@ -1454,6 +1543,10 @@ GenomeCollection
       ├── pair_trajectory_step_differences()
       ├── matrix_trajectory_step_distances()
       └── matrix_trajectory_pair_contributions()
+                       │
+                       ├── full-dataset analysis
+                       ├── biological-only analysis
+                       └── squared-deformation partitioning
                        │
                        ▼
                  GenomeMatrix
@@ -1701,7 +1794,9 @@ Technical and scientific disagreement is welcome when it remains respectful, evi
 * [x] Pair-trajectory step differences
 * [x] Cross-scale matrix distances
 * [x] Pair contributions to matrix deformation
-* [ ] Full-dataset versus biological-only comparison
+* [x] Full-dataset versus biological-only comparison
+* [x] Relative step-distance reduction analysis
+* [x] Synthetic-control squared-deformation partitioning
 * [ ] Cross-scale stability metrics
 * [ ] Ranking stability analysis
 * [ ] Clustering stability analysis
@@ -1815,7 +1910,9 @@ This representation may support the identification of:
 * abrupt geometric changes;
 * sequence pairs driving matrix deformation;
 * differences between distance metrics;
-* exploratory multiscale mutation signatures.
+* exploratory multiscale mutation signatures;
+* differences between full and biological-only dataset geometry;
+* the fraction of squared deformation associated with synthetic-control pairs.
 
 ### Visual exploration
 
@@ -1827,7 +1924,7 @@ The visualization layer provides graphical views of:
 * changes across k-mer scales;
 * pair-specific trajectories.
 
-Visual evidence remains exploratory. The implemented step differences, matrix-trajectory distances and pair-contribution rankings provide a first quantitative layer beneath those visual patterns, but they still require statistical and biological validation.
+Visual evidence remains exploratory. The implemented step differences, matrix-trajectory distances, pair-contribution rankings, full-versus-biological comparisons and squared-deformation partitioning provide a quantitative layer beneath those visual patterns, but they still require statistical and biological validation.
 
 ### Future multiscale embeddings
 
@@ -1871,6 +1968,8 @@ Important research topics include:
 
 > Which sequence pairs drive changes in dataset geometry across k-mer scales?
 
+> How much of the observed matrix deformation is associated with a synthetic control rather than relationships among biological sequences?
+
 > Can graphical analysis expose meaningful multiscale patterns that can later be quantified through formal stability metrics?
 
 > Can multiscale comparison geometries support an exploratory method for detecting and characterizing mutation signatures?
@@ -1885,6 +1984,9 @@ Important research topics include:
 * Sliding-window triplets are not equivalent to reading-frame-aware codons.
 * The example dataset is too small for biological validation.
 * The synthetic periodic control dominates several global cross-scale changes.
+* Full-versus-biological comparisons are currently demonstrated on one small dataset.
+* Relative step-distance reduction is comparative and is not an additive contribution measure.
+* Squared-deformation shares are exact for the current matrix coordinates but remain dataset-specific exploratory quantities.
 * Cosine similarity is highly compressed in the current descriptor space.
 * Histograms currently contain only 15 unique pairwise observations for the six-sequence dataset.
 * Box plots summarize small exploratory samples.

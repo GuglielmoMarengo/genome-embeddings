@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 
 from src.genome import (
@@ -69,13 +70,23 @@ PERIODIC_CONTROL_PATH = (
     / "periodic_sequence.fasta"
 )
 
-GENOME_LABELS = [
+PERIODIC_CONTROL_LABEL = (
+    "Periodic control"
+)
+
+FULL_GENOME_LABELS = [
     "Aequorea GFP",
     "Acropora GFP",
     "Discosoma FP583",
     "S. aureus catA",
     "S. cerevisiae TPI1",
-    "Periodic control",
+    PERIODIC_CONTROL_LABEL,
+]
+
+BIOLOGICAL_GENOME_LABELS = [
+    label
+    for label in FULL_GENOME_LABELS
+    if label != PERIODIC_CONTROL_LABEL
 ]
 
 DEFAULT_KMER_LENGTH = 3
@@ -90,6 +101,41 @@ KMER_SENSITIVITY_LENGTHS = [
 
 REFERENCE_LABEL = "Aequorea GFP"
 COMPARISON_LABEL = "Acropora GFP"
+
+
+@dataclass(slots=True)
+class DatasetMultiscaleAnalysis:
+    labels: list[str]
+
+    euclidean_trajectory: dict[
+        int,
+        list[float],
+    ]
+
+    cosine_trajectory: dict[
+        int,
+        list[float],
+    ]
+
+    euclidean_step_distances: dict[
+        tuple[int, int],
+        float,
+    ]
+
+    cosine_step_distances: dict[
+        tuple[int, int],
+        float,
+    ]
+
+    euclidean_pair_contributions: dict[
+        tuple[int, int],
+        list[dict[str, str | float]],
+    ]
+
+    cosine_pair_contributions: dict[
+        tuple[int, int],
+        list[dict[str, str | float]],
+    ]
 
 
 def print_genome_summary(
@@ -113,6 +159,7 @@ def print_descriptor(
     descriptor: GenomeDescriptor,
 ) -> None:
     print("\nGenome Descriptor:")
+
     print(
         f"Length: {descriptor.length} bp"
     )
@@ -133,7 +180,7 @@ def print_descriptor(
     )
 
     print(
-        f"GC skew: "
+        "GC skew: "
         f"{descriptor.gc_skew:.4f}"
     )
 
@@ -148,7 +195,7 @@ def print_descriptor(
     )
 
     print(
-        f"k-mer length: "
+        "k-mer length: "
         f"{descriptor.kmer_length}"
     )
 
@@ -336,7 +383,10 @@ def print_pair_trajectory(
 
 
 def print_pair_step_differences(
-    differences: dict[tuple[int, int], float],
+    differences: dict[
+        tuple[int, int],
+        float,
+    ],
     row_label: str,
     column_label: str,
     metric_name: str,
@@ -347,9 +397,10 @@ def print_pair_step_differences(
         f"{metric_name} Step Differences:"
     )
 
-    for (first_k, second_k), difference in (
-        differences.items()
-    ):
+    for (
+        first_k,
+        second_k,
+    ), difference in differences.items():
         print(
             f"k={first_k} -> k={second_k}: "
             f"{difference:+.6f}"
@@ -357,7 +408,10 @@ def print_pair_step_differences(
 
 
 def print_matrix_step_distances(
-    distances: dict[tuple[int, int], float],
+    distances: dict[
+        tuple[int, int],
+        float,
+    ],
     metric_name: str,
 ) -> None:
     print(
@@ -365,9 +419,10 @@ def print_matrix_step_distances(
         "Matrix-Trajectory Step Distances:"
     )
 
-    for (first_k, second_k), distance in (
-        distances.items()
-    ):
+    for (
+        first_k,
+        second_k,
+    ), distance in distances.items():
         print(
             f"k={first_k} -> k={second_k}: "
             f"{distance:.6f}"
@@ -387,9 +442,10 @@ def print_top_pair_contributions(
         "to Matrix Deformation:"
     )
 
-    for (first_k, second_k), rows in (
-        contributions.items()
-    ):
+    for (
+        first_k,
+        second_k,
+    ), rows in contributions.items():
         print(
             f"k={first_k} -> k={second_k}:"
         )
@@ -404,6 +460,143 @@ def print_top_pair_contributions(
                 f"absolute="
                 f"{row['absolute_difference']:.6f}"
             )
+
+
+def print_dataset_dimensions(
+    full_analysis: DatasetMultiscaleAnalysis,
+    biological_analysis: DatasetMultiscaleAnalysis,
+) -> None:
+    print(
+        "\nMultiscale Analysis Dimensions:"
+    )
+
+    for k, full_vector in (
+        full_analysis
+        .euclidean_trajectory
+        .items()
+    ):
+        biological_vector = (
+            biological_analysis
+            .euclidean_trajectory[k]
+        )
+
+        print(
+            f"k={k}: "
+            f"full={len(full_vector)}, "
+            f"biological-only="
+            f"{len(biological_vector)}"
+        )
+
+
+def print_dataset_step_comparison(
+    full_distances: dict[
+        tuple[int, int],
+        float,
+    ],
+    biological_distances: dict[
+        tuple[int, int],
+        float,
+    ],
+    metric_name: str,
+) -> None:
+    if (
+        full_distances.keys()
+        != biological_distances.keys()
+    ):
+        raise ValueError(
+            "Dataset step-distance transitions "
+            "must match."
+        )
+
+    print(
+        f"\n{metric_name} Full vs "
+        "Biological-Only Step Distances:"
+    )
+
+    for transition, full_distance in (
+        full_distances.items()
+    ):
+        biological_distance = (
+            biological_distances[
+                transition
+            ]
+        )
+
+        difference = (
+            full_distance
+            - biological_distance
+        )
+
+        control_share = (
+            difference
+            / full_distance
+            if full_distance != 0
+            else 0.0
+        )
+
+        first_k, second_k = transition
+
+        print(
+            f"k={first_k} -> k={second_k}: "
+            f"full={full_distance:.6f}, "
+            f"biological-only="
+            f"{biological_distance:.6f}, "
+            f"difference={difference:.6f}, "
+            f"relative reduction="
+            f"{control_share * 100:.2f}%"
+        )
+
+def print_control_deformation_share(
+    contributions: dict[
+        tuple[int, int],
+        list[dict[str, str | float]],
+    ],
+    control_label: str,
+    metric_name: str,
+) -> None:
+    print(
+        f"\n{metric_name} Periodic-Control "
+        "Squared Deformation Share:"
+    )
+
+    for (
+        first_k,
+        second_k,
+    ), rows in contributions.items():
+        total_squared_deformation = sum(
+            float(row["difference"]) ** 2
+            for row in rows
+        )
+
+        control_squared_deformation = sum(
+            float(row["difference"]) ** 2
+            for row in rows
+            if (
+                row["row_label"]
+                == control_label
+                or row["column_label"]
+                == control_label
+            )
+        )
+
+        control_share = (
+            control_squared_deformation
+            / total_squared_deformation
+            if total_squared_deformation != 0
+            else 0.0
+        )
+
+        biological_share = (
+            1.0
+            - control_share
+        )
+
+        print(
+            f"k={first_k} -> k={second_k}: "
+            f"control={control_share * 100:.2f}%, "
+            f"biological-only="
+            f"{biological_share * 100:.2f}%"
+        )
 
 
 def load_genomes() -> list[Genome]:
@@ -427,6 +620,83 @@ def load_genomes() -> list[Genome]:
             PERIODIC_CONTROL_PATH
         ),
     ]
+
+
+def analyze_multiscale_dataset(
+    collection: GenomeCollection,
+    labels: list[str],
+) -> DatasetMultiscaleAnalysis:
+    euclidean_trajectory = (
+        collection
+        .euclidean_matrix_trajectory(
+            labels=labels,
+            k_values=(
+                KMER_SENSITIVITY_LENGTHS
+            ),
+        )
+    )
+
+    cosine_trajectory = (
+        collection
+        .cosine_matrix_trajectory(
+            labels=labels,
+            k_values=(
+                KMER_SENSITIVITY_LENGTHS
+            ),
+        )
+    )
+
+    euclidean_step_distances = (
+        collection
+        .matrix_trajectory_step_distances(
+            euclidean_trajectory
+        )
+    )
+
+    cosine_step_distances = (
+        collection
+        .matrix_trajectory_step_distances(
+            cosine_trajectory
+        )
+    )
+
+    euclidean_pair_contributions = (
+        collection
+        .matrix_trajectory_pair_contributions(
+            labels=labels,
+            trajectory=euclidean_trajectory,
+        )
+    )
+
+    cosine_pair_contributions = (
+        collection
+        .matrix_trajectory_pair_contributions(
+            labels=labels,
+            trajectory=cosine_trajectory,
+        )
+    )
+
+    return DatasetMultiscaleAnalysis(
+        labels=labels.copy(),
+        euclidean_trajectory=(
+            euclidean_trajectory
+        ),
+        cosine_trajectory=(
+            cosine_trajectory
+        ),
+        euclidean_step_distances=(
+            euclidean_step_distances
+        ),
+        cosine_step_distances=(
+            cosine_step_distances
+        ),
+        euclidean_pair_contributions=(
+            euclidean_pair_contributions
+        ),
+        cosine_pair_contributions=(
+            cosine_pair_contributions
+        ),
+    )
 
 
 def save_visualizations(
@@ -528,7 +798,7 @@ def save_visualizations(
         ),
     ]
 
-    output_paths = []
+    output_paths: list[Path] = []
 
     for filename, figure in figures:
         output_path = save_figure(
@@ -550,8 +820,36 @@ def save_visualizations(
 def main() -> None:
     genomes = load_genomes()
 
-    collection = GenomeCollection(
+    biological_genomes = [
+        genome
+        for genome, label in zip(
+            genomes,
+            FULL_GENOME_LABELS,
+            strict=True,
+        )
+        if label != PERIODIC_CONTROL_LABEL
+    ]
+
+    full_collection = GenomeCollection(
         genomes
+    )
+
+    biological_collection = GenomeCollection(
+        biological_genomes
+    )
+
+    print(
+        "\nDataset Configuration:"
+    )
+
+    print(
+        "Full dataset: "
+        f"{len(full_collection.genomes)} genomes"
+    )
+
+    print(
+        "Biological-only dataset: "
+        f"{len(biological_collection.genomes)} genomes"
     )
 
     reference_genome = genomes[0]
@@ -598,17 +896,17 @@ def main() -> None:
     )
 
     euclidean_matrix = (
-        collection
+        full_collection
         .euclidean_distance_matrix(
-            labels=GENOME_LABELS,
+            labels=FULL_GENOME_LABELS,
             k=DEFAULT_KMER_LENGTH,
         )
     )
 
     cosine_matrix = (
-        collection
+        full_collection
         .cosine_similarity_matrix(
-            labels=GENOME_LABELS,
+            labels=FULL_GENOME_LABELS,
             k=DEFAULT_KMER_LENGTH,
         )
     )
@@ -657,30 +955,73 @@ def main() -> None:
             f"{label}: {value:.4f}"
         )
 
-    euclidean_trajectory = (
-        collection
-        .euclidean_matrix_trajectory(
-            labels=GENOME_LABELS,
-            k_values=(
-                KMER_SENSITIVITY_LENGTHS
-            ),
+    full_analysis = (
+        analyze_multiscale_dataset(
+            collection=full_collection,
+            labels=FULL_GENOME_LABELS,
         )
     )
 
-    cosine_trajectory = (
-        collection
-        .cosine_matrix_trajectory(
-            labels=GENOME_LABELS,
-            k_values=(
-                KMER_SENSITIVITY_LENGTHS
-            ),
+    biological_analysis = (
+        analyze_multiscale_dataset(
+            collection=biological_collection,
+            labels=BIOLOGICAL_GENOME_LABELS,
         )
+    )
+
+    print_dataset_dimensions(
+        full_analysis=full_analysis,
+        biological_analysis=(
+            biological_analysis
+        ),
+    )
+
+    print_dataset_step_comparison(
+        full_distances=(
+            full_analysis
+            .euclidean_step_distances
+        ),
+        biological_distances=(
+            biological_analysis
+            .euclidean_step_distances
+        ),
+        metric_name="Euclidean",
+    )
+
+    print_dataset_step_comparison(
+        full_distances=(
+            full_analysis
+            .cosine_step_distances
+        ),
+        biological_distances=(
+            biological_analysis
+            .cosine_step_distances
+        ),
+        metric_name="Cosine",
+    )
+
+    print_control_deformation_share(
+        contributions=(
+            full_analysis
+            .euclidean_pair_contributions
+        ),
+        control_label=PERIODIC_CONTROL_LABEL,
+        metric_name="Euclidean",
+    )
+
+    print_control_deformation_share(
+        contributions=(
+            full_analysis
+            .cosine_pair_contributions
+        ),
+        control_label=PERIODIC_CONTROL_LABEL,
+        metric_name="Cosine",
     )
 
     euclidean_pair_trajectory = (
-        collection
+        full_collection
         .euclidean_pair_trajectory(
-            labels=GENOME_LABELS,
+            labels=FULL_GENOME_LABELS,
             row_label=REFERENCE_LABEL,
             column_label=COMPARISON_LABEL,
             k_values=(
@@ -690,9 +1031,9 @@ def main() -> None:
     )
 
     cosine_pair_trajectory = (
-        collection
+        full_collection
         .cosine_pair_trajectory(
-            labels=GENOME_LABELS,
+            labels=FULL_GENOME_LABELS,
             row_label=REFERENCE_LABEL,
             column_label=COMPARISON_LABEL,
             k_values=(
@@ -703,13 +1044,17 @@ def main() -> None:
 
     print_matrix_trajectory(
         trajectory=(
-            euclidean_trajectory
+            full_analysis
+            .euclidean_trajectory
         ),
         metric_name="Euclidean",
     )
 
     print_matrix_trajectory(
-        trajectory=cosine_trajectory,
+        trajectory=(
+            full_analysis
+            .cosine_trajectory
+        ),
         metric_name="Cosine",
     )
 
@@ -732,46 +1077,16 @@ def main() -> None:
     )
 
     euclidean_pair_step_differences = (
-        collection
+        GenomeCollection
         .pair_trajectory_step_differences(
             euclidean_pair_trajectory
         )
     )
 
     cosine_pair_step_differences = (
-        collection
+        GenomeCollection
         .pair_trajectory_step_differences(
             cosine_pair_trajectory
-        )
-    )
-
-    euclidean_matrix_step_distances = (
-        collection
-        .matrix_trajectory_step_distances(
-            euclidean_trajectory
-        )
-    )
-
-    cosine_matrix_step_distances = (
-        collection
-        .matrix_trajectory_step_distances(
-            cosine_trajectory
-        )
-    )
-
-    euclidean_pair_contributions = (
-        collection
-        .matrix_trajectory_pair_contributions(
-            labels=GENOME_LABELS,
-            trajectory=euclidean_trajectory,
-        )
-    )
-
-    cosine_pair_contributions = (
-        collection
-        .matrix_trajectory_pair_contributions(
-            labels=GENOME_LABELS,
-            trajectory=cosine_trajectory,
         )
     )
 
@@ -795,28 +1110,32 @@ def main() -> None:
 
     print_matrix_step_distances(
         distances=(
-            euclidean_matrix_step_distances
+            full_analysis
+            .euclidean_step_distances
         ),
         metric_name="Euclidean",
     )
 
     print_matrix_step_distances(
         distances=(
-            cosine_matrix_step_distances
+            full_analysis
+            .cosine_step_distances
         ),
         metric_name="Cosine",
     )
 
     print_top_pair_contributions(
         contributions=(
-            euclidean_pair_contributions
+            full_analysis
+            .euclidean_pair_contributions
         ),
         metric_name="Euclidean",
     )
 
     print_top_pair_contributions(
         contributions=(
-            cosine_pair_contributions
+            full_analysis
+            .cosine_pair_contributions
         ),
         metric_name="Cosine",
     )
@@ -830,10 +1149,12 @@ def main() -> None:
                 cosine_matrix
             ),
             euclidean_trajectory=(
-                euclidean_trajectory
+                full_analysis
+                .euclidean_trajectory
             ),
             cosine_trajectory=(
-                cosine_trajectory
+                full_analysis
+                .cosine_trajectory
             ),
             euclidean_pair_trajectory=(
                 euclidean_pair_trajectory
@@ -925,7 +1246,7 @@ def main() -> None:
     )
 
     print(
-        f"Metric: "
+        "Metric: "
         f"{matrix_dict['metric']}"
     )
 
@@ -935,7 +1256,7 @@ def main() -> None:
     )
 
     print(
-        f"Labels: "
+        "Labels: "
         f"{matrix_dict['labels']}"
     )
 
