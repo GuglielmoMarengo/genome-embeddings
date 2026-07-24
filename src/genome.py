@@ -1,4 +1,7 @@
-import math, json, csv, io
+import csv
+import io
+import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -815,6 +818,251 @@ class GenomeCollection:
             }
 
         return partitions
+
+
+    @staticmethod
+    def matrix_ranking_trajectory(
+        matrices: dict[int, GenomeMatrix],
+        reference_label: str,
+    ) -> dict[int, list[tuple[str, float]]]:
+        Genome.validate_string(
+            "Reference label",
+            reference_label,
+        )
+
+        if not matrices:
+            raise ValueError(
+                "Genome matrices cannot be empty."
+            )
+
+        return {
+            k: matrix.rank_by_label(
+                label=reference_label,
+            )
+            for k, matrix in matrices.items()
+        }
+
+    @staticmethod
+    def ranking_trajectory_stability(
+        rankings: dict[
+            int,
+            list[tuple[str, float]],
+        ],
+    ) -> dict[
+        tuple[int, int],
+        dict[str, float | int | bool],
+    ]:
+        GenomeCollection._validate_trajectory_steps(
+            trajectory=rankings,
+            trajectory_name="Ranking trajectory",
+        )
+
+        ranking_items = list(rankings.items())
+        stability: dict[
+            tuple[int, int],
+            dict[str, float | int | bool],
+        ] = {}
+
+        for (
+            first_k,
+            first_ranking,
+        ), (
+            second_k,
+            second_ranking,
+        ) in zip(
+            ranking_items,
+            ranking_items[1:],
+        ):
+            first_labels = [
+                label
+                for label, _ in first_ranking
+            ]
+
+            second_labels = [
+                label
+                for label, _ in second_ranking
+            ]
+
+            if not first_labels or not second_labels:
+                raise ValueError(
+                    "Ranking trajectory entries "
+                    "cannot be empty."
+                )
+
+            if (
+                len(first_labels) != len(set(first_labels))
+                or len(second_labels)
+                != len(set(second_labels))
+            ):
+                raise ValueError(
+                    "Ranking labels must be unique."
+                )
+
+            if set(first_labels) != set(second_labels):
+                raise ValueError(
+                    "Ranking trajectory entries must "
+                    "contain the same labels."
+                )
+
+            first_positions = {
+                label: position
+                for position, label in enumerate(
+                    first_labels,
+                    start=1,
+                )
+            }
+
+            second_positions = {
+                label: position
+                for position, label in enumerate(
+                    second_labels,
+                    start=1,
+                )
+            }
+
+            concordant_pairs = 0
+            discordant_pairs = 0
+
+            for first_index, first_label in enumerate(
+                first_labels
+            ):
+                for second_label in first_labels[
+                    first_index + 1:
+                ]:
+                    first_order = (
+                        first_positions[first_label]
+                        < first_positions[second_label]
+                    )
+
+                    second_order = (
+                        second_positions[first_label]
+                        < second_positions[second_label]
+                    )
+
+                    if first_order == second_order:
+                        concordant_pairs += 1
+                    else:
+                        discordant_pairs += 1
+
+            total_pairs = (
+                concordant_pairs
+                + discordant_pairs
+            )
+
+            kendall_tau = (
+                (
+                    concordant_pairs
+                    - discordant_pairs
+                )
+                / total_pairs
+                if total_pairs != 0
+                else 1.0
+            )
+
+            absolute_rank_shifts = [
+                abs(
+                    first_positions[label]
+                    - second_positions[label]
+                )
+                for label in first_labels
+            ]
+
+            mean_absolute_rank_shift = (
+                sum(absolute_rank_shifts)
+                / len(absolute_rank_shifts)
+            )
+
+            stability[(first_k, second_k)] = {
+                "kendall_tau": kendall_tau,
+                "concordant_pairs": (
+                    concordant_pairs
+                ),
+                "discordant_pairs": (
+                    discordant_pairs
+                ),
+                "total_pairs": total_pairs,
+                "mean_absolute_rank_shift": (
+                    mean_absolute_rank_shift
+                ),
+                "max_rank_shift": max(
+                    absolute_rank_shifts
+                ),
+                "exact_match": (
+                    first_labels == second_labels
+                ),
+            }
+
+        return stability
+
+    def euclidean_ranking_trajectory(
+        self,
+        labels: list[str],
+        reference_label: str,
+        k_values: list[int],
+    ) -> dict[int, list[tuple[str, float]]]:
+        matrices = self.euclidean_distance_matrices(
+            labels=labels,
+            k_values=k_values,
+        )
+
+        return self.matrix_ranking_trajectory(
+            matrices=matrices,
+            reference_label=reference_label,
+        )
+
+    def euclidean_ranking_stability(
+        self,
+        labels: list[str],
+        reference_label: str,
+        k_values: list[int],
+    ) -> dict[
+        tuple[int, int],
+        dict[str, float | int | bool],
+    ]:
+        rankings = self.euclidean_ranking_trajectory(
+            labels=labels,
+            reference_label=reference_label,
+            k_values=k_values,
+        )
+
+        return self.ranking_trajectory_stability(
+            rankings
+        )
+
+    def cosine_ranking_trajectory(
+        self,
+        labels: list[str],
+        reference_label: str,
+        k_values: list[int],
+    ) -> dict[int, list[tuple[str, float]]]:
+        matrices = self.cosine_similarity_matrices(
+            labels=labels,
+            k_values=k_values,
+        )
+
+        return self.matrix_ranking_trajectory(
+            matrices=matrices,
+            reference_label=reference_label,
+        )
+
+    def cosine_ranking_stability(
+        self,
+        labels: list[str],
+        reference_label: str,
+        k_values: list[int],
+    ) -> dict[
+        tuple[int, int],
+        dict[str, float | int | bool],
+    ]:
+        rankings = self.cosine_ranking_trajectory(
+            labels=labels,
+            reference_label=reference_label,
+            k_values=k_values,
+        )
+
+        return self.ranking_trajectory_stability(
+            rankings
+        )
 
     def euclidean_distance_matrix(
         self,

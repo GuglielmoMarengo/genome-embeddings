@@ -543,3 +543,210 @@ def test_cosine_deformation_partition_wrapper_matches_generic(
         contributions=contributions,
         selected_label="Genome C",
     )
+
+def test_matrix_ranking_trajectory_preserves_k_order(
+    collection: GenomeCollection,
+):
+    matrices = collection.euclidean_distance_matrices(
+        labels=LABELS,
+        k_values=[3, 1, 2],
+    )
+
+    trajectory = (
+        GenomeCollection.matrix_ranking_trajectory(
+            matrices=matrices,
+            reference_label="Genome A",
+        )
+    )
+
+    assert list(trajectory) == [3, 1, 2]
+
+    assert trajectory[3] == matrices[3].rank_by_label(
+        label="Genome A"
+    )
+
+
+def test_ranking_stability_reports_perfect_match():
+    stability = (
+        GenomeCollection.ranking_trajectory_stability(
+            {
+                1: [
+                    ("Genome B", 0.1),
+                    ("Genome C", 0.2),
+                    ("Genome D", 0.3),
+                ],
+                2: [
+                    ("Genome B", 0.4),
+                    ("Genome C", 0.5),
+                    ("Genome D", 0.6),
+                ],
+            }
+        )[(1, 2)]
+    )
+
+    assert stability["kendall_tau"] == pytest.approx(1.0)
+    assert stability["concordant_pairs"] == 3
+    assert stability["discordant_pairs"] == 0
+    assert stability["mean_absolute_rank_shift"] == pytest.approx(0.0)
+    assert stability["max_rank_shift"] == 0
+    assert stability["exact_match"] is True
+
+
+def test_ranking_stability_reports_complete_reversal():
+    stability = (
+        GenomeCollection.ranking_trajectory_stability(
+            {
+                1: [
+                    ("Genome B", 0.1),
+                    ("Genome C", 0.2),
+                    ("Genome D", 0.3),
+                ],
+                2: [
+                    ("Genome D", 0.1),
+                    ("Genome C", 0.2),
+                    ("Genome B", 0.3),
+                ],
+            }
+        )[(1, 2)]
+    )
+
+    assert stability["kendall_tau"] == pytest.approx(-1.0)
+    assert stability["concordant_pairs"] == 0
+    assert stability["discordant_pairs"] == 3
+    assert stability["max_rank_shift"] == 2
+    assert stability["exact_match"] is False
+
+
+def test_ranking_stability_reports_single_inversion():
+    stability = (
+        GenomeCollection.ranking_trajectory_stability(
+            {
+                1: [
+                    ("Genome B", 0.1),
+                    ("Genome C", 0.2),
+                    ("Genome D", 0.3),
+                ],
+                2: [
+                    ("Genome C", 0.1),
+                    ("Genome B", 0.2),
+                    ("Genome D", 0.3),
+                ],
+            }
+        )[(1, 2)]
+    )
+
+    assert stability["kendall_tau"] == pytest.approx(1 / 3)
+    assert stability["concordant_pairs"] == 2
+    assert stability["discordant_pairs"] == 1
+    assert stability["mean_absolute_rank_shift"] == pytest.approx(
+        2 / 3
+    )
+
+
+def test_ranking_stability_preserves_transition_order():
+    stability = (
+        GenomeCollection.ranking_trajectory_stability(
+            {
+                3: [
+                    ("Genome B", 0.1),
+                    ("Genome C", 0.2),
+                ],
+                1: [
+                    ("Genome C", 0.1),
+                    ("Genome B", 0.2),
+                ],
+                2: [
+                    ("Genome B", 0.1),
+                    ("Genome C", 0.2),
+                ],
+            }
+        )
+    )
+
+    assert list(stability) == [
+        (3, 1),
+        (1, 2),
+    ]
+
+
+def test_ranking_stability_rejects_empty_rankings():
+    with pytest.raises(
+        ValueError,
+        match=r"Ranking trajectory cannot be empty\.",
+    ):
+        GenomeCollection.ranking_trajectory_stability({})
+
+
+def test_ranking_stability_requires_two_scales():
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"Ranking trajectory must contain "
+            r"at least two k-mer scales\."
+        ),
+    ):
+        GenomeCollection.ranking_trajectory_stability(
+            {
+                1: [
+                    ("Genome B", 0.1),
+                ]
+            }
+        )
+
+
+def test_ranking_stability_rejects_mismatched_labels():
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"Ranking trajectory entries must "
+            r"contain the same labels\."
+        ),
+    ):
+        GenomeCollection.ranking_trajectory_stability(
+            {
+                1: [
+                    ("Genome B", 0.1),
+                    ("Genome C", 0.2),
+                ],
+                2: [
+                    ("Genome B", 0.1),
+                    ("Genome D", 0.2),
+                ],
+            }
+        )
+
+
+def test_euclidean_ranking_stability_wrapper_matches_generic(
+    collection: GenomeCollection,
+):
+    rankings = collection.euclidean_ranking_trajectory(
+        labels=LABELS,
+        reference_label="Genome A",
+        k_values=[1, 2, 3],
+    )
+
+    assert collection.euclidean_ranking_stability(
+        labels=LABELS,
+        reference_label="Genome A",
+        k_values=[1, 2, 3],
+    ) == collection.ranking_trajectory_stability(
+        rankings
+    )
+
+
+def test_cosine_ranking_stability_wrapper_matches_generic(
+    collection: GenomeCollection,
+):
+    rankings = collection.cosine_ranking_trajectory(
+        labels=LABELS,
+        reference_label="Genome A",
+        k_values=[1, 2, 3],
+    )
+
+    assert collection.cosine_ranking_stability(
+        labels=LABELS,
+        reference_label="Genome A",
+        k_values=[1, 2, 3],
+    ) == collection.ranking_trajectory_stability(
+        rankings
+    )

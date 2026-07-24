@@ -293,6 +293,74 @@ def plot_trajectory_distributions(
     return figure
 
 
+
+def plot_ranking_stability(
+    stability: dict[
+        tuple[int, int],
+        dict[str, float | int | bool],
+    ],
+    metric: MetricName,
+) -> Figure:
+    if not stability:
+        raise ValueError(
+            "Ranking stability cannot be empty."
+        )
+
+    metric_title = _metric_title(metric)
+
+    transitions = [
+        f"{first_k}->{second_k}"
+        for first_k, second_k in stability
+    ]
+
+    tau_values = [
+        float(values["kendall_tau"])
+        for values in stability.values()
+    ]
+
+    figure, axis = plt.subplots(
+        figsize=(8.5, 5.0)
+    )
+
+    axis.plot(
+        transitions,
+        tau_values,
+        marker="o",
+    )
+
+    axis.axhline(
+        1.0,
+        linewidth=1.0,
+        linestyle="--",
+        alpha=0.4,
+    )
+
+    axis.axhline(
+        0.0,
+        linewidth=1.0,
+        alpha=0.4,
+    )
+
+    axis.set_ylim(-1.05, 1.05)
+    axis.set_xlabel("k-mer scale transition")
+    axis.set_ylabel("Kendall rank correlation")
+
+    axis.set_title(
+        f"{metric_title} Ranking Stability "
+        "Across k-mer Scales"
+    )
+
+    axis.grid(
+        visible=True,
+        axis="y",
+        alpha=0.3,
+    )
+
+    figure.tight_layout()
+
+    return figure
+
+
 def save_figure(
     figure: Figure,
     output_path: str | Path,

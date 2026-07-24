@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/github/license/GuglielmoMarengo/genome-embeddings)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/GuglielmoMarengo/genome-embeddings)](https://github.com/GuglielmoMarengo/genome-embeddings/commits/main)
 [![Status](https://img.shields.io/badge/Status-In%20Development-orange)](https://github.com/GuglielmoMarengo/genome-embeddings)
-[![Tests](https://img.shields.io/badge/Tests-149%20passing-brightgreen)](tests)
+[![Tests](https://img.shields.io/badge/Tests-159%20passing-brightgreen)](tests)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-blue)](SECURITY.md)
 [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen)](CONTRIBUTING.md)
 
@@ -138,6 +138,9 @@ The project follows these principles:
 * Generic label-based squared-deformation partitioning
 * Squared-deformation shares for selected-label and remaining pairs
 * Exact reconstruction of remaining-subset step distances
+* Reference-based ranking trajectories across `k`
+* Kendall rank-correlation stability between consecutive scales
+* Rank inversion and rank-shift diagnostics
 * Euclidean and cosine sensitivity analysis across `k`
 
 ### Visualization
@@ -147,6 +150,7 @@ The project follows these principles:
 * Pair-trajectory line plots
 * Matrix-value distributions
 * Multi-`k` distribution plots
+* Ranking-stability plots based on Kendall tau
 * PNG export
 * Automatic output-directory creation
 * Headless visualization testing
@@ -215,7 +219,7 @@ For detailed output:
 python -m pytest -v
 ```
 
-The current test suite contains **149 passing tests**.
+The current test suite contains **159 passing tests**.
 
 ---
 
@@ -1081,6 +1085,80 @@ collection.cosine_matrix_deformation_partition(
 
 When the selected sequence is removed without changing the remaining sequences, `remaining_squared_deformation` equals the squared matrix-step distance of the corresponding subset. This identity is covered by automated tests.
 
+
+### Ranking stability across k-mer scales
+
+A selected reference genome can be ranked against every other genome at each requested value of `k`:
+
+```python
+rankings = collection.euclidean_ranking_trajectory(
+    labels=labels,
+    reference_label="Genome A",
+    k_values=[1, 2, 3, 4, 5],
+)
+```
+
+Cosine rankings are generated with:
+
+```python
+rankings = collection.cosine_ranking_trajectory(
+    labels=labels,
+    reference_label="Genome A",
+    k_values=[1, 2, 3, 4, 5],
+)
+```
+
+The resulting ordered mapping stores one complete ranking per k-mer scale.
+
+Ranking stability between consecutive scales is calculated with:
+
+```python
+stability = (
+    GenomeCollection
+    .ranking_trajectory_stability(
+        rankings
+    )
+)
+```
+
+Metric-specific wrappers are also available:
+
+```python
+collection.euclidean_ranking_stability(
+    labels=labels,
+    reference_label="Genome A",
+    k_values=[1, 2, 3, 4, 5],
+)
+
+collection.cosine_ranking_stability(
+    labels=labels,
+    reference_label="Genome A",
+    k_values=[1, 2, 3, 4, 5],
+)
+```
+
+For each transition, the analysis reports:
+
+```text
+kendall_tau
+concordant_pairs
+discordant_pairs
+total_pairs
+mean_absolute_rank_shift
+max_rank_shift
+exact_match
+```
+
+Kendall tau ranges from `-1` to `1`:
+
+```text
+ 1 = identical ordering
+ 0 = no net ordinal agreement
+-1 = complete reversal
+```
+
+The implementation assumes complete rankings with unique labels. It evaluates ranking order only; the magnitude of the underlying distance or similarity changes is analyzed separately through matrix trajectories and pair contributions.
+
 ---
 
 ## Visualization
@@ -1211,7 +1289,9 @@ outputs/
 ├── cosine_multi_k_distribution.png
 ├── euclidean_distribution.png
 ├── euclidean_heatmap.png
-└── euclidean_multi_k_distribution.png
+├── euclidean_multi_k_distribution.png
+├── euclidean_ranking_stability.png
+└── cosine_ranking_stability.png
 ```
 
 The `outputs/` directory is excluded through `.gitignore` because the images are generated artifacts.
@@ -1532,6 +1612,10 @@ These results are preliminary and do not represent biological validation.
 * full-dataset versus biological-only trajectory comparison;
 * relative step-distance reduction after periodic-control removal;
 * squared-deformation partitioning by pair category;
+* Euclidean and cosine ranking trajectories;
+* Kendall ranking-stability analysis;
+* inversion and rank-shift diagnostics;
+* sectioned technical-report console output;
 * heatmap generation;
 * pair-trajectory plotting;
 * matrix distributions;
@@ -1559,6 +1643,8 @@ KMER_SENSITIVITY_LENGTHS = [
     5,
 ]
 ```
+
+The console demonstration is organized as a technical report with numbered sections for dataset configuration, single-scale analysis, multiscale geometry, ranking stability, selected-pair trajectories, deformation drivers and generated artifacts. Verbose raw-vector and serialization previews are replaced by compact summaries.
 
 ---
 
@@ -1607,7 +1693,11 @@ GenomeCollection
       ├── matrix_trajectory_pair_contributions()
       ├── matrix_trajectory_deformation_partition()
       ├── euclidean_matrix_deformation_partition()
-      └── cosine_matrix_deformation_partition()
+      ├── cosine_matrix_deformation_partition()
+      ├── matrix_ranking_trajectory()
+      ├── ranking_trajectory_stability()
+      ├── euclidean_ranking_stability()
+      └── cosine_ranking_stability()
                        │
                        ├── full-dataset analysis
                        ├── biological-only analysis
@@ -1633,6 +1723,7 @@ GenomeCollection
                                ├── plot_pair_trajectory()
                                ├── plot_matrix_distribution()
                                ├── plot_trajectory_distributions()
+                               ├── plot_ranking_stability()
                                └── save_figure()
 ```
 
@@ -1711,6 +1802,11 @@ The current implementation validates:
 * empty deformation-contribution mappings;
 * empty contribution rows;
 * missing selected labels in deformation partitions;
+* empty or single-scale ranking trajectories;
+* empty ranking entries;
+* duplicate ranking labels;
+* inconsistent labels between ranking scales;
+* empty ranking-stability plots;
 * empty visualization trajectories;
 * empty distribution vectors;
 * invalid histogram bins;
@@ -1729,7 +1825,7 @@ matplotlib.use("Agg")
 
 This allows figures to be created and saved during automated tests without opening graphical windows.
 
-The multiscale tests also verify additive deformation partitioning, wrapper consistency and exact reconstruction of subset step distances.
+The multiscale tests also verify additive deformation partitioning, wrapper consistency, exact reconstruction of subset step distances, ranking-trajectory ordering, Kendall correlation, inversions and rank-shift diagnostics.
 
 The visualization tests verify:
 
@@ -1870,8 +1966,8 @@ Technical and scientific disagreement is welcome when it remains respectful, evi
 * [x] Generic label-based deformation partition API
 * [x] Exact subset-distance reconstruction test
 * [x] Default k-mer sensitivity range through `k = 5`
-* [ ] Cross-scale stability metrics
-* [ ] Ranking stability analysis
+* [x] Cross-scale ranking-stability metrics
+* [x] Ranking stability analysis
 * [ ] Clustering stability analysis
 * [ ] Sequence-length sensitivity analysis
 * [ ] Sparse high-`k` representation
@@ -1892,7 +1988,7 @@ Technical and scientific disagreement is welcome when it remains respectful, evi
 * [ ] Highlighted pairwise-value plots
 * [ ] Full matrix-trajectory plots
 * [ ] Cross-scale deformation plots
-* [ ] Ranking-stability plots
+* [x] Ranking-stability plots
 * [ ] Clustering dendrograms
 * [ ] Dimensionality-reduction plots
 * [ ] Permanent README figures under `docs/images/`
@@ -1986,7 +2082,9 @@ This representation may support the identification of:
 * exploratory multiscale mutation signatures;
 * differences between full and biological-only dataset geometry;
 * the fraction of squared deformation associated with any selected-label pair set;
-* exact reconstruction of the remaining subset geometry after selected-label removal.
+* exact reconstruction of the remaining subset geometry after selected-label removal;
+* stable and unstable reference-based rankings across k-mer scales;
+* ordinal inversions that are not obvious from raw matrix distances alone.
 
 ### Visual exploration
 
@@ -1996,7 +2094,8 @@ The visualization layer provides graphical views of:
 * metric compression;
 * pairwise-value distributions;
 * changes across k-mer scales;
-* pair-specific trajectories.
+* pair-specific trajectories;
+* Kendall ranking stability across consecutive scales.
 
 Visual evidence remains exploratory. The implemented step differences, matrix-trajectory distances, pair-contribution rankings, full-versus-biological comparisons and squared-deformation partitioning provide a quantitative layer beneath those visual patterns, but they still require statistical and biological validation.
 
@@ -2042,6 +2141,8 @@ Important research topics include:
 
 > Which sequence pairs drive changes in dataset geometry across k-mer scales?
 
+> Are reference-based genome rankings stable across k-mer scales, and which transitions introduce ordinal inversions?
+
 > How much of the observed matrix deformation is associated with a synthetic control rather than relationships among biological sequences?
 
 > Can graphical analysis expose meaningful multiscale patterns that can later be quantified through formal stability metrics?
@@ -2063,6 +2164,8 @@ Important research topics include:
 * Squared-deformation shares are exact for the current matrix coordinates but remain dataset-specific exploratory quantities.
 * The default `k = 1–5` range does not capture long genomic regions directly; it measures progressively more specific local sequence patterns.
 * Values above `k = 5` require explicit sparsity and sequence-length sensitivity analysis before routine interpretation.
+* Kendall ranking stability measures ordinal agreement and does not quantify the magnitude of distance or similarity changes.
+* Ranking results depend on the selected reference genome and the current descriptor space.
 * Cosine similarity is highly compressed in the current descriptor space.
 * Histograms currently contain only 15 unique pairwise observations for the six-sequence dataset.
 * Box plots summarize small exploratory samples.
