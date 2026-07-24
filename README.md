@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/github/license/GuglielmoMarengo/genome-embeddings)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/GuglielmoMarengo/genome-embeddings)](https://github.com/GuglielmoMarengo/genome-embeddings/commits/main)
 [![Status](https://img.shields.io/badge/Status-In%20Development-orange)](https://github.com/GuglielmoMarengo/genome-embeddings)
-[![Tests](https://img.shields.io/badge/Tests-159%20passing-brightgreen)](tests)
+[![Tests](https://img.shields.io/badge/Tests-196%20passing-brightgreen)](tests)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-blue)](SECURITY.md)
 [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen)](CONTRIBUTING.md)
 
@@ -26,6 +26,10 @@ The current implementation supports:
 * pair contributions to matrix deformation;
 * full-dataset versus biological-only multiscale comparison;
 * squared-deformation partitioning for synthetic-control effects;
+* Descriptor Foundation V2 with finite-sample, dependency and sparsity diagnostics;
+* interpretable multiscale embeddings with global features represented once;
+* full k-mer probability vectors and Jensen–Shannon distribution comparison;
+* a professional NiceGUI scientific dashboard with FASTA upload and exports;
 * graphical analysis through heatmaps, distributions and trajectory plots;
 * structured security, contribution, issue-reporting and pull-request workflows.
 
@@ -88,6 +92,11 @@ The project follows these principles:
 * k-mer frequencies
 * Normalized k-mer diversity
 * k-mer entropy
+* Finite-sample entropy normalization
+* Effective k-mer count
+* Theoretical- and observable-space coverage
+* Singleton and repeated-window fractions
+* Complete lexicographically ordered probability vectors
 
 ### Structured representations
 
@@ -96,6 +105,10 @@ The project follows these principles:
 * `GenomeComparison`
 * `GenomeCollection`
 * `GenomeMatrix`
+* `GenomeDescriptorV2`
+* `KmerScaleDescriptorV2`
+* `GenomeEmbeddingV2`
+* `KmerDistributionProfile`
 
 ### Comparison tools
 
@@ -142,9 +155,18 @@ The project follows these principles:
 * Kendall rank-correlation stability between consecutive scales
 * Rank inversion and rank-shift diagnostics
 * Euclidean and cosine sensitivity analysis across `k`
+* Descriptor V2 Euclidean and cosine matrices
+* Interpretable multiscale embedding matrices
+* Jensen–Shannon distance matrices and trajectories
+* Jensen–Shannon ranking stability across `k`
 
-### Visualization
+### Visualization and dashboard
 
+* NiceGUI browser-based scientific dashboard
+* Multi-file single-record FASTA upload
+* Configurable k-mer scales, reference and comparison sequences
+* Interactive Plotly heatmaps and trajectories
+* In-memory JSON and CSV export
 * Euclidean distance heatmaps
 * Cosine similarity heatmaps
 * Pair-trajectory line plots
@@ -201,11 +223,19 @@ Install the dependencies:
 python -m pip install -r requirements.txt
 ```
 
-Run the demonstration:
+Run the command-line demonstration:
 
 ```bash
 python main.py
 ```
+
+Run the scientific dashboard:
+
+```bash
+python app.py
+```
+
+NiceGUI starts a local web application and opens it in the browser. Uploaded FASTA content is processed in memory; uploaded filenames are sanitized and are not used as filesystem paths.
 
 Run the test suite:
 
@@ -219,7 +249,7 @@ For detailed output:
 python -m pytest -v
 ```
 
-The current test suite contains **159 passing tests**.
+The current test suite contains **196 passing tests** across legacy descriptors, Descriptor Foundation V2, Jensen–Shannon distribution analysis, the application-facing dashboard workflow, dashboard plotting helpers and visualization utilities.
 
 ---
 
@@ -229,6 +259,8 @@ The project currently uses:
 
 ```text
 matplotlib>=3.10
+nicegui>=3.14,<4
+plotly>=6.5
 pytest>=8.3
 ```
 
@@ -406,6 +438,124 @@ Normalization:
 ```text
 normalized k-mer entropy = k-mer entropy / (2k)
 ```
+
+---
+
+## Descriptor Foundation V2
+
+The legacy descriptor remains available for reproducibility. Descriptor Foundation V2 is implemented separately in:
+
+```text
+src/descriptor_v2.py
+```
+
+A V2 descriptor contains three interpretable blocks.
+
+### Global composition block
+
+```text
+GC content
+normalized nucleotide entropy
+normalized GC skew
+purine content
+normalized first-order conditional nucleotide entropy
+```
+
+Conditional nucleotide entropy measures uncertainty in the next nucleotide after the current nucleotide is known:
+
+```text
+H(Xₙ₊₁ | Xₙ)
+```
+
+A deterministic periodic sequence can have balanced nucleotide composition while still having conditional entropy close to zero.
+
+### Dinucleotide dependency block
+
+For each of the 16 dinucleotides, V2 calculates an observed-to-expected ratio:
+
+```text
+ρXY = p(XY) / [p(X) × p(Y)]
+```
+
+The normalized V2 vector applies the bounded transformation:
+
+```text
+bounded ratio = ρ / (1 + ρ)
+```
+
+This maps non-negative ratios to `[0, 1]` while preserving their order.
+
+### Finite-sample k-mer block
+
+For sequence length `n` and k-mer length `k`:
+
+```text
+window count = n - k + 1
+possible k-mers = 4ᵏ
+observable maximum = min(4ᵏ, n - k + 1)
+```
+
+The finite-sample entropy normalization is:
+
+```text
+finite-sample normalized entropy
+= Hₖ / log₂(observable maximum)
+```
+
+The block also reports:
+
+```text
+distinct k-mer count
+effective k-mer count = 2^Hₖ
+theoretical-space coverage
+observable-space coverage
+singleton fraction
+repeated-window fraction
+```
+
+Example:
+
+```python
+from src.descriptor_v2 import GenomeDescriptorV2
+
+descriptor_v2 = GenomeDescriptorV2.from_genome(
+    genome,
+    k=3,
+)
+
+descriptor_v2.to_dict()
+descriptor_v2.to_feature_dict()
+descriptor_v2.to_normalized_vector()
+```
+
+### Interpretable multiscale embedding V2
+
+Global and dependency features are included once. Only scale-specific k-mer diagnostics are repeated for every requested value of `k`:
+
+```text
+global composition block
++
+dinucleotide dependency block
++
+k=1 finite-sample block
++
+k=2 finite-sample block
++
+...
+=
+GenomeEmbeddingV2
+```
+
+```python
+from src.descriptor_v2 import multiscale_embedding
+
+embedding = multiscale_embedding(
+    genome,
+    k_values=[1, 2, 3, 4, 5],
+)
+```
+
+This avoids multiplying the weight of GC content, nucleotide entropy, GC skew and purine content by the number of scales.
 
 ---
 
@@ -1161,6 +1311,67 @@ The implementation assumes complete rankings with unique labels. It evaluates ra
 
 ---
 
+## K-mer Distribution Comparison
+
+Aggregated entropy and diversity discard the identity of individual k-mers. The module:
+
+```text
+src/kmer_distribution.py
+```
+
+creates a complete probability vector in deterministic lexicographic order:
+
+```python
+from src.kmer_distribution import KmerDistributionProfile
+
+profile = KmerDistributionProfile.from_genome(
+    genome,
+    k=3,
+)
+```
+
+For two probability distributions `P` and `Q`, the Jensen–Shannon divergence is:
+
+```text
+M = (P + Q) / 2
+JSD(P, Q) = 1/2 KL(P || M) + 1/2 KL(Q || M)
+```
+
+Base-2 logarithms bound the divergence to `[0, 1]`. The project uses the metric distance:
+
+```text
+Jensen–Shannon distance = sqrt(JSD)
+```
+
+Collection-level analysis supports:
+
+```python
+from src.kmer_distribution import KmerDistributionCollection
+
+analysis = KmerDistributionCollection(genomes)
+
+matrix = analysis.distance_matrix(
+    labels=labels,
+    k=3,
+)
+
+matrices = analysis.distance_matrices(
+    labels=labels,
+    k_values=[1, 2, 3, 4, 5],
+)
+
+pair_trajectory = analysis.pair_trajectory(
+    labels=labels,
+    row_label="Genome A",
+    column_label="Genome B",
+    k_values=[1, 2, 3, 4, 5],
+)
+```
+
+The resulting matrices use `jensen_shannon` as their metric and integrate with existing ranking, trajectory, serialization and visualization utilities.
+
+---
+
 ## Visualization
 
 Visualization functions are implemented in:
@@ -1270,6 +1481,40 @@ The destination directory is created automatically when needed.
 
 ---
 
+## Scientific Dashboard
+
+Run:
+
+```bash
+python app.py
+```
+
+The NiceGUI dashboard provides:
+
+* demonstration-dataset loading;
+* multiple single-record FASTA uploads;
+* sanitized upload names and in-memory processing;
+* configurable `k` values from the interface;
+* reference and comparison selection;
+* legacy, Descriptor V2, multiscale-embedding and Jensen–Shannon summaries;
+* interactive Plotly heatmaps;
+* pair trajectories and Jensen–Shannon ranking stability;
+* finite-sample descriptor tables;
+* JSON and CSV downloads generated in memory;
+* responsive cards, tabs and dark-mode support.
+
+The application-facing analytical workflow is isolated in:
+
+```text
+src/dashboard.py
+```
+
+This module has no NiceGUI dependency and is covered by automated tests. `app.py` is the presentation layer.
+
+The dashboard currently accepts one FASTA record per uploaded file. Multi-record genome assemblies remain a future platform feature.
+
+---
+
 ## Generated Visualizations
 
 Running:
@@ -1284,14 +1529,21 @@ generates:
 outputs/
 ├── aequorea_acropora_cosine_trajectory.png
 ├── aequorea_acropora_euclidean_trajectory.png
+├── aequorea_acropora_jensen_shannon_trajectory.png
 ├── cosine_distribution.png
 ├── cosine_heatmap.png
 ├── cosine_multi_k_distribution.png
+├── cosine_ranking_stability.png
+├── descriptor_v2_euclidean_heatmap.png
+├── embedding_v2_euclidean_heatmap.png
 ├── euclidean_distribution.png
 ├── euclidean_heatmap.png
 ├── euclidean_multi_k_distribution.png
 ├── euclidean_ranking_stability.png
-└── cosine_ranking_stability.png
+├── jensen_shannon_distribution.png
+├── jensen_shannon_heatmap.png
+├── jensen_shannon_multi_k_distribution.png
+└── jensen_shannon_ranking_stability.png
 ```
 
 The `outputs/` directory is excluded through `.gitignore` because the images are generated artifacts.
@@ -1384,6 +1636,45 @@ Discosoma FP583: 0.9990
 S. aureus catA: 0.9954
 Periodic control: 0.8071
 ```
+
+### Descriptor Foundation V2 at `k = 3`
+
+For *Aequorea victoria* GFP:
+
+```text
+Conditional nucleotide entropy: 1.9085 bits
+Finite-sample normalized k-mer entropy: 0.9544
+Effective k-mer count: 52.94
+Theoretical-space coverage: 0.9844
+Observable-space coverage: 0.9844
+Singleton fraction: 0.0028
+Repeated-window fraction: 0.9972
+```
+
+For *Aequorea* versus *Acropora*:
+
+```text
+Legacy Euclidean distance: 0.065552
+Descriptor V2 Euclidean distance: 0.218092
+Multiscale embedding V2 distance: 0.263377
+Jensen–Shannon distance: 0.185929
+```
+
+The Descriptor V2 and embedding rankings differ from the legacy aggregated ranking. These differences are exploratory and require broader benchmark datasets before biological interpretation.
+
+### Jensen–Shannon k-mer trajectory
+
+For *Aequorea* versus *Acropora*:
+
+```text
+k=1: 0.051123
+k=2: 0.105503
+k=3: 0.185929
+k=4: 0.378036
+k=5: 0.668730
+```
+
+Unlike the legacy cosine trajectory, the complete k-mer distribution comparison does not collapse near `1`. Its strong increase with `k` also reflects growing distribution sparsity and finite sequence length, so the trajectory is not interpreted as sequence identity or evolutionary distance.
 
 ### Multiscale matrix trajectory
 
@@ -1612,6 +1903,10 @@ These results are preliminary and do not represent biological validation.
 * full-dataset versus biological-only trajectory comparison;
 * relative step-distance reduction after periodic-control removal;
 * squared-deformation partitioning by pair category;
+* Descriptor Foundation V2 diagnostics;
+* corrected top-k-mer frequency ordering;
+* interpretable multiscale embedding V2;
+* Jensen–Shannon matrices, rankings and trajectories;
 * Euclidean and cosine ranking trajectories;
 * Kendall ranking-stability analysis;
 * inversion and rank-shift diagnostics;
@@ -1621,8 +1916,8 @@ These results are preliminary and do not represent biological validation.
 * matrix distributions;
 * multi-`k` distributions;
 * PNG export;
-* JSON export preview;
-* CSV export preview;
+* compact JSON and CSV serialization summaries;
+* browser-based JSON and CSV downloads through the dashboard;
 * label-based lookup;
 * matrix metadata and row conversion.
 
@@ -1674,6 +1969,18 @@ FASTA sequence
                        ▼
                GenomeComparison
 
+Genome + selected k
+      │
+      ▼
+GenomeDescriptorV2
+      ├── finite-sample diagnostics
+      ├── dinucleotide dependency ratios
+      ├── conditional entropy
+      └── multiscale_embedding()
+                 │
+                 ▼
+          GenomeEmbeddingV2
+
 Multiple Genome objects
       │
       ▼
@@ -1717,6 +2024,9 @@ GenomeCollection
                        └── to_upper_triangle_rows()
                                │
                                ▼
+                       descriptor_v2.py
+                       kmer_distribution.py
+                       dashboard.py
                        visualization.py
                                │
                                ├── plot_matrix_heatmap()
@@ -1752,12 +2062,20 @@ genome-embeddings/
 │       └── periodic_sequence.fasta
 ├── outputs/
 ├── src/
+│   ├── __init__.py
+│   ├── dashboard.py
+│   ├── descriptor_v2.py
 │   ├── genome.py
+│   ├── kmer_distribution.py
 │   └── visualization.py
 ├── tests/
 │   ├── data/
 │   │   └── example.fasta
+│   ├── test_app.py
+│   ├── test_dashboard.py
+│   ├── test_descriptor_v2.py
 │   ├── test_genome.py
+│   ├── test_kmer_distribution.py
 │   ├── test_multiscale_analysis.py
 │   └── test_visualization.py
 ├── .gitignore
@@ -1766,6 +2084,7 @@ genome-embeddings/
 ├── LICENSE
 ├── README.md
 ├── SECURITY.md
+├── app.py
 ├── main.py
 └── requirements.txt
 ```
@@ -1802,6 +2121,9 @@ The current implementation validates:
 * empty deformation-contribution mappings;
 * empty contribution rows;
 * missing selected labels in deformation partitions;
+* invalid Descriptor V2 k-mer scales and embedding compatibility;
+* invalid probability vectors and incompatible k-mer vocabularies;
+* duplicate dashboard labels and unsupported multi-record uploads;
 * empty or single-scale ranking trajectories;
 * empty ranking entries;
 * duplicate ranking labels;
@@ -1972,8 +2294,8 @@ Technical and scientific disagreement is welcome when it remains respectful, evi
 * [ ] Sequence-length sensitivity analysis
 * [ ] Sparse high-`k` representation
 * [ ] Multiscale mutation signatures
-* [ ] Multiscale genome embeddings
-* [ ] Scale weighting
+* [x] Initial interpretable multiscale genome embedding V2
+* [ ] Learned or validated scale weighting
 * [ ] Cross-scale normalization
 
 ### Visualization
@@ -2008,14 +2330,15 @@ Technical and scientific disagreement is welcome when it remains respectful, evi
 
 ### Future descriptors and metrics
 
-* [ ] Conditional entropy
+* [x] First-order conditional nucleotide entropy
+* [ ] Higher-order conditional entropy
 * [ ] Block entropy
 * [ ] Entropy rate
 * [ ] Mutual information
-* [ ] Jensen-Shannon divergence
-* [ ] Dinucleotide statistics
-* [ ] Full k-mer frequency vectors
-* [ ] Hybrid descriptor vectors
+* [x] Jensen-Shannon divergence
+* [x] Dinucleotide observed/expected statistics
+* [x] Full k-mer probability vectors
+* [x] Versioned hybrid Descriptor V2 vectors
 * [ ] Codon-usage descriptors
 * [ ] Reading-frame-aware descriptors
 * [ ] Graph-based descriptors
@@ -2029,7 +2352,10 @@ Technical and scientific disagreement is welcome when it remains respectful, evi
 * [ ] Multiple FASTA records
 * [ ] Ambiguous nucleotide support
 * [ ] RNA support
-* [ ] Command-line interface
+* [x] Command-line demonstration report
+* [x] Local scientific dashboard
+* [x] FASTA upload in the dashboard
+* [ ] Full command-line argument interface
 * [ ] Package distribution
 * [ ] Descriptor export
 * [ ] Comparison export
@@ -2129,6 +2455,8 @@ Important research topics include:
 * statistical validation;
 * biological validation.
 
+Descriptor Foundation V2 and Jensen–Shannon comparison now provide a first implementation of this block-based architecture. The next validation step is to evaluate them on larger, homogeneous benchmarks such as complete 16S or 18S sequences and, later, windowed bacterial genomes.
+
 ---
 
 ## Research Questions
@@ -2143,6 +2471,10 @@ Important research topics include:
 
 > Are reference-based genome rankings stable across k-mer scales, and which transitions introduce ordinal inversions?
 
+> Do finite-sample normalization and explicit dependency descriptors reduce sequence-length and sparsity effects?
+
+> How does Jensen–Shannon comparison of complete k-mer distributions differ from aggregated entropy and diversity descriptors?
+
 > How much of the observed matrix deformation is associated with a synthetic control rather than relationships among biological sequences?
 
 > Can graphical analysis expose meaningful multiscale patterns that can later be quantified through formal stability metrics?
@@ -2154,8 +2486,11 @@ Important research topics include:
 ## Current Limitations
 
 * Only DNA sequences containing `A`, `C`, `G` and `T` are supported.
-* FASTA parsing currently supports a single record.
-* The descriptor vector contains a limited number of aggregated features.
+* Core and dashboard FASTA parsing currently support a single record per file.
+* The legacy descriptor vector contains a limited number of aggregated features.
+* Descriptor V2 is more expressive but its feature weighting has not been statistically or biologically validated.
+* Dinucleotide odds ratios and conditional entropy capture local dependency, not protein function or phenotype.
+* Jensen–Shannon distances increase with k-mer sparsity and require sequence-length sensitivity analysis.
 * Sliding-window triplets are not equivalent to reading-frame-aware codons.
 * The example dataset is too small for biological validation.
 * The synthetic periodic control dominates several global cross-scale changes.
@@ -2170,6 +2505,7 @@ Important research topics include:
 * Histograms currently contain only 15 unique pairwise observations for the six-sequence dataset.
 * Box plots summarize small exploratory samples.
 * Visualization does not replace statistical testing.
+* The dashboard is a local single-user scientific interface, not a multi-user production platform.
 * No statistical significance testing is currently implemented.
 * No phylogenetic, structural or functional inference should be made from the current results.
 * Multiscale trajectories are exploratory representations, not validated biological signatures.

@@ -1,13 +1,22 @@
-from dataclasses import dataclass
+"""Command-line demonstration for Genome Embeddings.
+
+The report preserves the legacy descriptor analysis and adds Descriptor
+Foundation V2, a first interpretable multiscale embedding, and full k-mer
+Jensen-Shannon distribution comparisons.
+"""
+
+from __future__ import annotations
+
 from pathlib import Path
 
-from src.genome import (
-    Genome,
-    GenomeCollection,
-    GenomeComparison,
-    GenomeDescriptor,
-    GenomeMatrix,
+from src.dashboard import DashboardConfig, analyze_records, load_demo_records
+from src.descriptor_v2 import (
+    DINUCLEOTIDE_ORDER,
+    DescriptorV2Collection,
+    GenomeDescriptorV2,
 )
+from src.genome import Genome, GenomeCollection, GenomeMatrix
+from src.kmer_distribution import KmerDistributionCollection
 from src.visualization import (
     plot_matrix_distribution,
     plot_matrix_heatmap,
@@ -21,1095 +30,640 @@ from src.visualization import (
 PROJECT_ROOT = Path(__file__).resolve().parent
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
 
-AEQUOREA_GFP_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "fluorescent_proteins"
-    / "aequorea_victoria_gfp_cds.fasta"
-)
-
-ACROPORA_GFP_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "fluorescent_proteins"
-    / "acropora_millepora_gfp_cds.fasta"
-)
-
-DISCOSOMA_FP583_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "fluorescent_proteins"
-    / "discosoma_fp583_cds.fasta"
-)
-
-STAPHYLOCOCCUS_AUREUS_CATA_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "controls"
-    / "biological"
-    / "staphylococcus_aureus_cata_cds.fasta"
-)
-
-SACCHAROMYCES_CEREVISIAE_TPI1_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "controls"
-    / "biological"
-    / "saccharomyces_cerevisiae_tpi1_cds.fasta"
-)
-
-PERIODIC_CONTROL_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "controls"
-    / "periodic_sequence.fasta"
-)
-
-PERIODIC_CONTROL_LABEL = "Periodic control"
-
 FULL_GENOME_LABELS = [
     "Aequorea GFP",
     "Acropora GFP",
     "Discosoma FP583",
     "S. aureus catA",
     "S. cerevisiae TPI1",
-    PERIODIC_CONTROL_LABEL,
+    "Periodic control",
 ]
-
+PERIODIC_CONTROL_LABEL = "Periodic control"
 BIOLOGICAL_GENOME_LABELS = [
-    label
-    for label in FULL_GENOME_LABELS
-    if label != PERIODIC_CONTROL_LABEL
+    label for label in FULL_GENOME_LABELS if label != PERIODIC_CONTROL_LABEL
 ]
 
 DEFAULT_KMER_LENGTH = 3
+KMER_SENSITIVITY_LENGTHS = [1, 2, 3, 4, 5]
 DEFAULT_KMER_LIMIT = 10
-
-KMER_SENSITIVITY_LENGTHS = [
-    1,
-    2,
-    3,
-    4,
-    5,
-]
-
 REFERENCE_LABEL = "Aequorea GFP"
 COMPARISON_LABEL = "Acropora GFP"
-REPORT_WIDTH = 88
+REPORT_WIDTH = 96
 
 
-RankingTrajectory = dict[
-    int,
-    list[tuple[str, float]],
-]
-
-RankingStability = dict[
-    tuple[int, int],
-    dict[str, float | int | bool],
-]
-
-
-@dataclass(slots=True)
-class DatasetMultiscaleAnalysis:
-    labels: list[str]
-
-    euclidean_trajectory: dict[
-        int,
-        list[float],
-    ]
-
-    cosine_trajectory: dict[
-        int,
-        list[float],
-    ]
-
-    euclidean_step_distances: dict[
-        tuple[int, int],
-        float,
-    ]
-
-    cosine_step_distances: dict[
-        tuple[int, int],
-        float,
-    ]
-
-    euclidean_pair_contributions: dict[
-        tuple[int, int],
-        list[dict[str, str | float]],
-    ]
-
-    cosine_pair_contributions: dict[
-        tuple[int, int],
-        list[dict[str, str | float]],
-    ]
-
-    euclidean_deformation_partition: dict[
-        tuple[int, int],
-        dict[str, float | int],
-    ]
-
-    cosine_deformation_partition: dict[
-        tuple[int, int],
-        dict[str, float | int],
-    ]
-
-    euclidean_ranking_trajectory: RankingTrajectory
-    cosine_ranking_trajectory: RankingTrajectory
-    euclidean_ranking_stability: RankingStability
-    cosine_ranking_stability: RankingStability
-
-
-def print_report_title(
-    title: str,
-    subtitle: str | None = None,
-) -> None:
+def report_title(title: str, subtitle: str | None = None) -> None:
     print("=" * REPORT_WIDTH)
     print(title.upper())
-
-    if subtitle is not None:
+    if subtitle:
         print(subtitle)
-
     print("=" * REPORT_WIDTH)
 
 
-def print_section(
-    title: str,
-) -> None:
+def section(number: int, title: str) -> None:
     print()
-    print(title.upper())
+    print(f"{number}. {title}".upper())
     print("-" * REPORT_WIDTH)
 
 
-def print_subsection(
-    title: str,
-) -> None:
+def subsection(title: str) -> None:
     print()
     print(title)
     print("." * min(len(title), REPORT_WIDTH))
 
 
-def print_key_value(
-    label: str,
-    value: object,
-    indent: int = 0,
-) -> None:
-    prefix = " " * indent
-    print(f"{prefix}{label}: {value}")
+def key_value(label: str, value: object, indent: int = 2) -> None:
+    print(f"{' ' * indent}{label}: {value}")
 
 
-def print_genome_summary(
-    genome: Genome,
-) -> None:
-    print_key_value("Header", genome.header)
-    print_key_value("Length", f"{genome.length()} bp")
-    print_key_value(
-        "Sequence preview",
-        f"{genome.sequence[:60]}...",
-    )
-    print_key_value(
+def load_genomes() -> list[Genome]:
+    return [record.genome for record in load_demo_records(PROJECT_ROOT)]
+
+
+def print_genome_summary(genome: Genome) -> None:
+    key_value("Header", genome.header)
+    key_value("Length", f"{genome.length()} bp")
+    key_value("Sequence preview", f"{genome.sequence[:64]}...")
+    key_value(
         "Reverse-complement preview",
-        f"{genome.reverse_complement()[:60]}...",
+        f"{genome.reverse_complement()[:64]}...",
     )
 
 
-def print_descriptor(
-    descriptor: GenomeDescriptor,
-) -> None:
+def print_legacy_descriptor(genome: Genome, k: int) -> None:
+    descriptor = genome.descriptor(k)
     rows = [
         ("GC content", f"{descriptor.gc_content * 100:.2f}%"),
         ("AT content", f"{descriptor.at_content * 100:.2f}%"),
         ("Shannon entropy", f"{descriptor.shannon_entropy:.4f} bits"),
         ("GC skew", f"{descriptor.gc_skew:.4f}"),
         ("Purine content", f"{descriptor.purine_content * 100:.2f}%"),
-        (
-            "Pyrimidine content",
-            f"{descriptor.pyrimidine_content * 100:.2f}%",
-        ),
-        ("k-mer length", descriptor.kmer_length),
         ("k-mer diversity", f"{descriptor.kmer_diversity:.4f}"),
         ("k-mer entropy", f"{descriptor.kmer_entropy:.4f} bits"),
     ]
-
     for label, value in rows:
-        print_key_value(label, value, indent=2)
+        key_value(label, value)
 
 
-def print_kmer_frequencies(
-    genome: Genome,
-    k: int = DEFAULT_KMER_LENGTH,
-    limit: int = DEFAULT_KMER_LIMIT,
-) -> None:
-    frequencies = genome.kmer_frequencies(k)
-
-    for index, (kmer, frequency) in enumerate(
-        frequencies.items(),
-        start=1,
-    ):
-        print(
-            f"  {index:>2}. {kmer}: "
-            f"{frequency} occurrences"
-        )
-
-        if index == limit:
-            break
-
-
-def print_genome_comparison(
-    comparison: GenomeComparison,
-) -> None:
-    print_key_value(
-        "Euclidean distance",
-        f"{comparison.euclidean_distance:.6f}",
-        indent=2,
-    )
-
-    print_key_value(
-        "Cosine similarity",
-        f"{comparison.cosine_similarity:.6f}",
-        indent=2,
-    )
-
-    print("  Feature differences:")
-
-    for feature_name, difference in (
-        comparison.sorted_feature_differences()
-    ):
-        print(
-            f"    - {feature_name}: "
-            f"{difference:.6f}"
-        )
-
-
-def print_genome_matrix(
-    matrix: GenomeMatrix,
-) -> None:
-    label_width = max(
-        len(label)
-        for label in matrix.labels
-    )
-
-    value_width = max(
-        12,
-        max(
-            len(label) + 2
-            for label in matrix.labels
+def print_v2_descriptor(descriptor: GenomeDescriptorV2) -> None:
+    kmer = descriptor.kmer
+    rows = [
+        (
+            "Conditional nucleotide entropy",
+            f"{descriptor.conditional_nucleotide_entropy:.4f} bits",
         ),
+        ("k-mer windows", kmer.window_count),
+        ("Theoretical k-mer space", kmer.possible_kmer_count),
+        ("Observable maximum", kmer.observable_kmer_count),
+        ("Distinct observed k-mers", kmer.distinct_kmer_count),
+        (
+            "Finite-sample normalized entropy",
+            f"{kmer.finite_sample_normalized_kmer_entropy:.4f}",
+        ),
+        ("Effective k-mer count", f"{kmer.effective_kmer_count:.2f}"),
+        (
+            "Theoretical-space coverage",
+            f"{kmer.theoretical_space_coverage:.4f}",
+        ),
+        (
+            "Observable-space coverage",
+            f"{kmer.observable_space_coverage:.4f}",
+        ),
+        ("Singleton fraction", f"{kmer.singleton_fraction:.4f}"),
+        (
+            "Repeated-window fraction",
+            f"{kmer.repeated_window_fraction:.4f}",
+        ),
+    ]
+    for label, value in rows:
+        key_value(label, value)
+
+    print("  Strongest dinucleotide enrichments:")
+    enriched = sorted(
+        descriptor.dinucleotide_odds_ratios.items(),
+        key=lambda item: (-item[1], item[0]),
+    )[:5]
+    for dinucleotide, ratio in enriched:
+        print(f"    - {dinucleotide}: {ratio:.4f}")
+
+
+def print_top_kmers(genome: Genome, k: int, limit: int) -> None:
+    frequencies = sorted(
+        genome.kmer_frequencies(k).items(),
+        key=lambda item: (-item[1], item[0]),
     )
+    for index, (kmer, count) in enumerate(frequencies[:limit], start=1):
+        print(f"  {index:>2}. {kmer}: {count} occurrences")
 
-    header = " " * (label_width + 2)
 
-    for label in matrix.labels:
-        header += f"{label:>{value_width}}"
-
+def print_matrix(matrix: GenomeMatrix) -> None:
+    label_width = max(len(label) for label in matrix.labels)
+    value_width = max(16, max(len(label) + 2 for label in matrix.labels))
+    header = " " * (label_width + 2) + "".join(
+        f"{label:>{value_width}}" for label in matrix.labels
+    )
     print(header)
-
-    for label, row in zip(
-        matrix.labels,
-        matrix.values,
-        strict=True,
-    ):
-        formatted_values = "".join(
-            f"{value:>{value_width}.4f}"
-            for value in row
-        )
-
-        print(
-            f"{label:<{label_width}}  "
-            f"{formatted_values}"
-        )
+    for label, row in zip(matrix.labels, matrix.values, strict=True):
+        values = "".join(f"{value:>{value_width}.4f}" for value in row)
+        print(f"{label:<{label_width}}  {values}")
 
 
-def print_ranking(
-    ranking: list[tuple[str, float]],
-) -> None:
-    for position, (label, value) in enumerate(
-        ranking,
+def print_ranking(matrix: GenomeMatrix, reference_label: str) -> None:
+    for index, (label, value) in enumerate(
+        matrix.rank_by_label(reference_label),
         start=1,
     ):
-        print(
-            f"  {position}. {label}: "
-            f"{value:.6f}"
-        )
+        print(f"  {index}. {label}: {value:.6f}")
 
 
-def print_dataset_dimensions(
-    full_analysis: DatasetMultiscaleAnalysis,
-    biological_analysis: DatasetMultiscaleAnalysis,
+def print_pair_comparison(
+    legacy_collection: GenomeCollection,
+    v2_collection: DescriptorV2Collection,
+    distribution_collection: KmerDistributionCollection,
+    labels: list[str],
 ) -> None:
-    for k, full_vector in (
-        full_analysis.euclidean_trajectory.items()
-    ):
-        biological_vector = (
-            biological_analysis
-            .euclidean_trajectory[k]
-        )
+    legacy_euclidean = legacy_collection.euclidean_distance_matrix(
+        labels, DEFAULT_KMER_LENGTH
+    ).get_value(REFERENCE_LABEL, COMPARISON_LABEL)
+    legacy_cosine = legacy_collection.cosine_similarity_matrix(
+        labels, DEFAULT_KMER_LENGTH
+    ).get_value(REFERENCE_LABEL, COMPARISON_LABEL)
+    v2_euclidean = v2_collection.euclidean_distance_matrix(
+        labels, DEFAULT_KMER_LENGTH
+    ).get_value(REFERENCE_LABEL, COMPARISON_LABEL)
+    v2_cosine = v2_collection.cosine_similarity_matrix(
+        labels, DEFAULT_KMER_LENGTH
+    ).get_value(REFERENCE_LABEL, COMPARISON_LABEL)
+    embedding_distance = v2_collection.multiscale_embedding_distance_matrix(
+        labels,
+        KMER_SENSITIVITY_LENGTHS,
+    ).get_value(REFERENCE_LABEL, COMPARISON_LABEL)
+    jensen_shannon = distribution_collection.distance_matrix(
+        labels,
+        DEFAULT_KMER_LENGTH,
+    ).get_value(REFERENCE_LABEL, COMPARISON_LABEL)
 
-        print(
-            f"  k={k}: "
-            f"full={len(full_vector)} coordinates, "
-            f"biological-only="
-            f"{len(biological_vector)} coordinates"
-        )
+    rows = [
+        ("Legacy Euclidean", legacy_euclidean),
+        ("Legacy cosine", legacy_cosine),
+        ("Descriptor V2 Euclidean", v2_euclidean),
+        ("Descriptor V2 cosine", v2_cosine),
+        ("Embedding V2 Euclidean", embedding_distance),
+        ("Jensen-Shannon distance", jensen_shannon),
+    ]
+    for label, value in rows:
+        key_value(label, f"{value:.6f}")
 
 
-def print_dataset_step_comparison(
-    full_distances: dict[
-        tuple[int, int],
-        float,
-    ],
-    biological_distances: dict[
-        tuple[int, int],
-        float,
-    ],
+def print_step_comparison(
+    full: dict[tuple[int, int], float],
+    biological: dict[tuple[int, int], float],
 ) -> None:
-    if (
-        full_distances.keys()
-        != biological_distances.keys()
-    ):
-        raise ValueError(
-            "Dataset step-distance transitions "
-            "must match."
-        )
-
-    print(
-        "  Transition   Full       Biological   "
-        "Reduction"
-    )
-
-    for transition, full_distance in (
-        full_distances.items()
-    ):
-        biological_distance = (
-            biological_distances[transition]
-        )
-
-        relative_reduction = (
-            (
-                full_distance
-                - biological_distance
-            )
-            / full_distance
-            if full_distance != 0
+    print("  Transition     Full       Biological    Reduction")
+    for transition, full_value in full.items():
+        biological_value = biological[transition]
+        reduction = (
+            (full_value - biological_value) / full_value
+            if full_value != 0.0
             else 0.0
         )
-
         first_k, second_k = transition
-
         print(
-            f"  {first_k}->{second_k:<7}"
-            f"{full_distance:>10.6f}"
-            f"{biological_distance:>13.6f}"
-            f"{relative_reduction * 100:>11.2f}%"
+            f"  {first_k}->{second_k:<8} "
+            f"{full_value:>9.6f}   "
+            f"{biological_value:>9.6f}   "
+            f"{reduction * 100:>8.2f}%"
         )
 
 
-def print_deformation_partition(
-    partitions: dict[
-        tuple[int, int],
-        dict[str, float | int],
-    ],
+def print_partition(
+    partition: dict[tuple[int, int], dict[str, float | int]],
 ) -> None:
-    print(
-        "  Transition   Control share   "
-        "Biological share"
-    )
-
-    for (first_k, second_k), partition in (
-        partitions.items()
-    ):
-        selected_share = float(
-            partition["selected_share"]
-        )
-
-        remaining_share = float(
-            partition["remaining_share"]
-        )
-
+    print("  Transition   Control share   Biological share")
+    for (first_k, second_k), row in partition.items():
         print(
-            f"  {first_k}->{second_k:<7}"
-            f"{selected_share * 100:>12.2f}%"
-            f"{remaining_share * 100:>17.2f}%"
+            f"  {first_k}->{second_k:<8} "
+            f"{float(row['selected_share']) * 100:>11.2f}%   "
+            f"{float(row['remaining_share']) * 100:>14.2f}%"
         )
 
 
-def print_pair_trajectory(
-    trajectory: dict[int, float],
-) -> None:
+def print_trajectory(trajectory: dict[int, float]) -> None:
     for k, value in trajectory.items():
-        print(
-            f"  k={k}: {value:.6f}"
-        )
+        print(f"  k={k}: {value:.6f}")
 
 
-def print_pair_step_differences(
-    differences: dict[
-        tuple[int, int],
-        float,
-    ],
-) -> None:
-    for (first_k, second_k), difference in (
-        differences.items()
-    ):
-        print(
-            f"  k={first_k} -> k={second_k}: "
-            f"{difference:+.6f}"
-        )
-
-
-def print_top_pair_contributions(
-    contributions: dict[
-        tuple[int, int],
-        list[dict[str, str | float]],
-    ],
-    limit: int = 3,
-) -> None:
-    for (first_k, second_k), rows in (
-        contributions.items()
-    ):
-        print(
-            f"  k={first_k} -> k={second_k}"
-        )
-
-        for position, row in enumerate(
-            rows[:limit],
-            start=1,
-        ):
-            print(
-                f"    {position}. "
-                f"{row['row_label']} -> "
-                f"{row['column_label']}: "
-                f"{float(row['difference']):+.6f}"
-            )
+def print_step_distances(distances: dict[tuple[int, int], float]) -> None:
+    for (first_k, second_k), value in distances.items():
+        print(f"  k={first_k} -> k={second_k}: {value:.6f}")
 
 
 def print_ranking_trajectory(
-    rankings: RankingTrajectory,
+    rankings: dict[int, list[tuple[str, float]]],
 ) -> None:
     for k, ranking in rankings.items():
-        order = " > ".join(
-            label
-            for label, _ in ranking
-        )
-
-        print(
-            f"  k={k}: {order}"
-        )
+        print(f"  k={k}: {' > '.join(label for label, _ in ranking)}")
 
 
 def print_ranking_stability(
-    stability: RankingStability,
+    stability: dict[tuple[int, int], dict[str, float | int | bool]],
 ) -> None:
-    print(
-        "  Transition   Kendall tau   "
-        "Inversions   Mean shift   Max shift"
-    )
-
-    for (first_k, second_k), values in (
-        stability.items()
-    ):
+    print("  Transition   Kendall tau   Inversions   Mean shift   Max shift")
+    for (first_k, second_k), row in stability.items():
         print(
-            f"  {first_k}->{second_k:<7}"
-            f"{float(values['kendall_tau']):>12.3f}"
-            f"{int(values['discordant_pairs']):>13}"
-            f"{float(values['mean_absolute_rank_shift']):>13.3f}"
-            f"{int(values['max_rank_shift']):>12}"
+            f"  {first_k}->{second_k:<8} "
+            f"{float(row['kendall_tau']):>10.3f}   "
+            f"{int(row['discordant_pairs']):>10}   "
+            f"{float(row['mean_absolute_rank_shift']):>10.3f}   "
+            f"{int(row['max_rank_shift']):>9}"
         )
 
 
-def load_genomes() -> list[Genome]:
-    return [
-        Genome.from_fasta(AEQUOREA_GFP_PATH),
-        Genome.from_fasta(ACROPORA_GFP_PATH),
-        Genome.from_fasta(DISCOSOMA_FP583_PATH),
-        Genome.from_fasta(
-            STAPHYLOCOCCUS_AUREUS_CATA_PATH
-        ),
-        Genome.from_fasta(
-            SACCHAROMYCES_CEREVISIAE_TPI1_PATH
-        ),
-        Genome.from_fasta(PERIODIC_CONTROL_PATH),
-    ]
-
-
-def analyze_multiscale_dataset(
-    collection: GenomeCollection,
-    labels: list[str],
-    reference_label: str,
-) -> DatasetMultiscaleAnalysis:
-    euclidean_trajectory = (
-        collection.euclidean_matrix_trajectory(
-            labels=labels,
-            k_values=KMER_SENSITIVITY_LENGTHS,
-        )
-    )
-
-    cosine_trajectory = (
-        collection.cosine_matrix_trajectory(
-            labels=labels,
-            k_values=KMER_SENSITIVITY_LENGTHS,
-        )
-    )
-
-    euclidean_step_distances = (
-        collection.matrix_trajectory_step_distances(
-            euclidean_trajectory
-        )
-    )
-
-    cosine_step_distances = (
-        collection.matrix_trajectory_step_distances(
-            cosine_trajectory
-        )
-    )
-
-    euclidean_pair_contributions = (
-        collection
-        .matrix_trajectory_pair_contributions(
-            labels=labels,
-            trajectory=euclidean_trajectory,
-        )
-    )
-
-    cosine_pair_contributions = (
-        collection
-        .matrix_trajectory_pair_contributions(
-            labels=labels,
-            trajectory=cosine_trajectory,
-        )
-    )
-
-    euclidean_deformation_partition = (
-        collection
-        .matrix_trajectory_deformation_partition(
-            contributions=(
-                euclidean_pair_contributions
-            ),
-            selected_label=PERIODIC_CONTROL_LABEL,
-        )
-        if PERIODIC_CONTROL_LABEL in labels
-        else {}
-    )
-
-    cosine_deformation_partition = (
-        collection
-        .matrix_trajectory_deformation_partition(
-            contributions=(
-                cosine_pair_contributions
-            ),
-            selected_label=PERIODIC_CONTROL_LABEL,
-        )
-        if PERIODIC_CONTROL_LABEL in labels
-        else {}
-    )
-
-    euclidean_ranking_trajectory = (
-        collection.euclidean_ranking_trajectory(
-            labels=labels,
-            reference_label=reference_label,
-            k_values=KMER_SENSITIVITY_LENGTHS,
-        )
-    )
-
-    cosine_ranking_trajectory = (
-        collection.cosine_ranking_trajectory(
-            labels=labels,
-            reference_label=reference_label,
-            k_values=KMER_SENSITIVITY_LENGTHS,
-        )
-    )
-
-    return DatasetMultiscaleAnalysis(
-        labels=labels.copy(),
-        euclidean_trajectory=(
-            euclidean_trajectory
-        ),
-        cosine_trajectory=(
-            cosine_trajectory
-        ),
-        euclidean_step_distances=(
-            euclidean_step_distances
-        ),
-        cosine_step_distances=(
-            cosine_step_distances
-        ),
-        euclidean_pair_contributions=(
-            euclidean_pair_contributions
-        ),
-        cosine_pair_contributions=(
-            cosine_pair_contributions
-        ),
-        euclidean_deformation_partition=(
-            euclidean_deformation_partition
-        ),
-        cosine_deformation_partition=(
-            cosine_deformation_partition
-        ),
-        euclidean_ranking_trajectory=(
-            euclidean_ranking_trajectory
-        ),
-        cosine_ranking_trajectory=(
-            cosine_ranking_trajectory
-        ),
-        euclidean_ranking_stability=(
-            collection.ranking_trajectory_stability(
-                euclidean_ranking_trajectory
-            )
-        ),
-        cosine_ranking_stability=(
-            collection.ranking_trajectory_stability(
-                cosine_ranking_trajectory
-            )
-        ),
-    )
+def matrix_trajectory(
+    matrices: dict[int, GenomeMatrix],
+) -> dict[int, list[float]]:
+    return {
+        k: matrix.to_upper_triangle_vector()
+        for k, matrix in matrices.items()
+    }
 
 
 def save_visualizations(
-    euclidean_matrix: GenomeMatrix,
-    cosine_matrix: GenomeMatrix,
-    full_analysis: DatasetMultiscaleAnalysis,
-    euclidean_pair_trajectory: dict[int, float],
-    cosine_pair_trajectory: dict[int, float],
+    *,
+    legacy_euclidean: GenomeMatrix,
+    legacy_cosine: GenomeMatrix,
+    descriptor_v2_euclidean: GenomeMatrix,
+    embedding_v2_euclidean: GenomeMatrix,
+    jensen_shannon: GenomeMatrix,
+    legacy_euclidean_trajectory: dict[int, list[float]],
+    legacy_cosine_trajectory: dict[int, list[float]],
+    jensen_shannon_trajectory: dict[int, list[float]],
+    legacy_pair_euclidean: dict[int, float],
+    legacy_pair_cosine: dict[int, float],
+    jensen_shannon_pair: dict[int, float],
+    legacy_euclidean_stability: dict,
+    legacy_cosine_stability: dict,
+    jensen_shannon_stability: dict,
 ) -> list[Path]:
     figures = [
+        ("euclidean_heatmap.png", plot_matrix_heatmap(legacy_euclidean)),
+        ("cosine_heatmap.png", plot_matrix_heatmap(legacy_cosine)),
         (
-            "euclidean_heatmap.png",
-            plot_matrix_heatmap(
-                euclidean_matrix
-            ),
+            "descriptor_v2_euclidean_heatmap.png",
+            plot_matrix_heatmap(descriptor_v2_euclidean),
         ),
         (
-            "cosine_heatmap.png",
-            plot_matrix_heatmap(
-                cosine_matrix
-            ),
+            "embedding_v2_euclidean_heatmap.png",
+            plot_matrix_heatmap(embedding_v2_euclidean),
         ),
         (
-            "aequorea_acropora_"
-            "euclidean_trajectory.png",
-            plot_pair_trajectory(
-                trajectory=(
-                    euclidean_pair_trajectory
-                ),
-                row_label=REFERENCE_LABEL,
-                column_label=COMPARISON_LABEL,
-                metric="euclidean",
-            ),
-        ),
-        (
-            "aequorea_acropora_"
-            "cosine_trajectory.png",
-            plot_pair_trajectory(
-                trajectory=(
-                    cosine_pair_trajectory
-                ),
-                row_label=REFERENCE_LABEL,
-                column_label=COMPARISON_LABEL,
-                metric="cosine",
-            ),
+            "jensen_shannon_heatmap.png",
+            plot_matrix_heatmap(jensen_shannon),
         ),
         (
             "euclidean_distribution.png",
-            plot_matrix_distribution(
-                euclidean_matrix
-            ),
+            plot_matrix_distribution(legacy_euclidean),
         ),
         (
             "cosine_distribution.png",
-            plot_matrix_distribution(
-                cosine_matrix
+            plot_matrix_distribution(legacy_cosine),
+        ),
+        (
+            "jensen_shannon_distribution.png",
+            plot_matrix_distribution(jensen_shannon),
+        ),
+        (
+            "aequorea_acropora_euclidean_trajectory.png",
+            plot_pair_trajectory(
+                legacy_pair_euclidean,
+                REFERENCE_LABEL,
+                COMPARISON_LABEL,
+                "euclidean",
+            ),
+        ),
+        (
+            "aequorea_acropora_cosine_trajectory.png",
+            plot_pair_trajectory(
+                legacy_pair_cosine,
+                REFERENCE_LABEL,
+                COMPARISON_LABEL,
+                "cosine",
+            ),
+        ),
+        (
+            "aequorea_acropora_jensen_shannon_trajectory.png",
+            plot_pair_trajectory(
+                jensen_shannon_pair,
+                REFERENCE_LABEL,
+                COMPARISON_LABEL,
+                "jensen_shannon",
             ),
         ),
         (
             "euclidean_multi_k_distribution.png",
             plot_trajectory_distributions(
-                trajectory=(
-                    full_analysis
-                    .euclidean_trajectory
-                ),
-                metric="euclidean",
+                legacy_euclidean_trajectory,
+                "euclidean",
             ),
         ),
         (
             "cosine_multi_k_distribution.png",
             plot_trajectory_distributions(
-                trajectory=(
-                    full_analysis
-                    .cosine_trajectory
-                ),
-                metric="cosine",
+                legacy_cosine_trajectory,
+                "cosine",
+            ),
+        ),
+        (
+            "jensen_shannon_multi_k_distribution.png",
+            plot_trajectory_distributions(
+                jensen_shannon_trajectory,
+                "jensen_shannon",
             ),
         ),
         (
             "euclidean_ranking_stability.png",
-            plot_ranking_stability(
-                stability=(
-                    full_analysis
-                    .euclidean_ranking_stability
-                ),
-                metric="euclidean",
-            ),
+            plot_ranking_stability(legacy_euclidean_stability, "euclidean"),
         ),
         (
             "cosine_ranking_stability.png",
+            plot_ranking_stability(legacy_cosine_stability, "cosine"),
+        ),
+        (
+            "jensen_shannon_ranking_stability.png",
             plot_ranking_stability(
-                stability=(
-                    full_analysis
-                    .cosine_ranking_stability
-                ),
-                metric="cosine",
+                jensen_shannon_stability,
+                "jensen_shannon",
             ),
         ),
     ]
 
-    output_paths: list[Path] = []
-
+    paths = []
     for filename, figure in figures:
-        output_paths.append(
+        paths.append(
             save_figure(
-                figure=figure,
-                output_path=(
-                    OUTPUT_DIR
-                    / filename
-                ),
+                figure,
+                OUTPUT_DIR / filename,
                 close=True,
             )
         )
-
-    return output_paths
+    return paths
 
 
 def main() -> None:
-    genomes = load_genomes()
-
+    records = load_demo_records(PROJECT_ROOT)
+    genomes = [record.genome for record in records]
+    labels = [record.label for record in records]
     biological_genomes = [
-        genome
-        for genome, label in zip(
-            genomes,
-            FULL_GENOME_LABELS,
-            strict=True,
-        )
-        if label != PERIODIC_CONTROL_LABEL
+        record.genome
+        for record in records
+        if record.label != PERIODIC_CONTROL_LABEL
     ]
 
-    full_collection = GenomeCollection(genomes)
+    legacy = GenomeCollection(genomes)
+    biological_legacy = GenomeCollection(biological_genomes)
+    descriptor_v2 = DescriptorV2Collection(genomes)
+    distribution = KmerDistributionCollection(genomes)
 
-    biological_collection = GenomeCollection(
-        biological_genomes
+    reference = genomes[0]
+    reference_v2 = GenomeDescriptorV2.from_genome(
+        reference,
+        DEFAULT_KMER_LENGTH,
     )
 
-    reference_genome = genomes[0]
-    comparison_genome = genomes[1]
-
-    reference_descriptor = (
-        reference_genome.descriptor(
-            k=DEFAULT_KMER_LENGTH
+    legacy_euclidean = legacy.euclidean_distance_matrix(
+        labels,
+        DEFAULT_KMER_LENGTH,
+    )
+    legacy_cosine = legacy.cosine_similarity_matrix(
+        labels,
+        DEFAULT_KMER_LENGTH,
+    )
+    descriptor_v2_euclidean = descriptor_v2.euclidean_distance_matrix(
+        labels,
+        DEFAULT_KMER_LENGTH,
+    )
+    descriptor_v2_cosine = descriptor_v2.cosine_similarity_matrix(
+        labels,
+        DEFAULT_KMER_LENGTH,
+    )
+    embedding_v2_euclidean = (
+        descriptor_v2.multiscale_embedding_distance_matrix(
+            labels,
+            KMER_SENSITIVITY_LENGTHS,
         )
     )
+    jensen_shannon = distribution.distance_matrix(
+        labels,
+        DEFAULT_KMER_LENGTH,
+    )
 
-    comparison_descriptor = (
-        comparison_genome.descriptor(
-            k=DEFAULT_KMER_LENGTH
+    legacy_euclidean_matrices = legacy.euclidean_distance_matrices(
+        labels,
+        KMER_SENSITIVITY_LENGTHS,
+    )
+    legacy_cosine_matrices = legacy.cosine_similarity_matrices(
+        labels,
+        KMER_SENSITIVITY_LENGTHS,
+    )
+    js_matrices = distribution.distance_matrices(
+        labels,
+        KMER_SENSITIVITY_LENGTHS,
+    )
+    legacy_euclidean_trajectory = matrix_trajectory(legacy_euclidean_matrices)
+    legacy_cosine_trajectory = matrix_trajectory(legacy_cosine_matrices)
+    js_trajectory = matrix_trajectory(js_matrices)
+
+    biological_euclidean_trajectory = biological_legacy.euclidean_matrix_trajectory(
+        BIOLOGICAL_GENOME_LABELS,
+        KMER_SENSITIVITY_LENGTHS,
+    )
+    biological_cosine_trajectory = biological_legacy.cosine_matrix_trajectory(
+        BIOLOGICAL_GENOME_LABELS,
+        KMER_SENSITIVITY_LENGTHS,
+    )
+
+    full_euclidean_steps = GenomeCollection.matrix_trajectory_step_distances(
+        legacy_euclidean_trajectory
+    )
+    full_cosine_steps = GenomeCollection.matrix_trajectory_step_distances(
+        legacy_cosine_trajectory
+    )
+    biological_euclidean_steps = (
+        GenomeCollection.matrix_trajectory_step_distances(
+            biological_euclidean_trajectory
         )
     )
-
-    comparison = reference_descriptor.compare(
-        comparison_descriptor
+    biological_cosine_steps = GenomeCollection.matrix_trajectory_step_distances(
+        biological_cosine_trajectory
     )
 
-    euclidean_matrix = (
-        full_collection.euclidean_distance_matrix(
-            labels=FULL_GENOME_LABELS,
-            k=DEFAULT_KMER_LENGTH,
-        )
+    euclidean_contributions = GenomeCollection.matrix_trajectory_pair_contributions(
+        labels,
+        legacy_euclidean_trajectory,
     )
-
-    cosine_matrix = (
-        full_collection.cosine_similarity_matrix(
-            labels=FULL_GENOME_LABELS,
-            k=DEFAULT_KMER_LENGTH,
-        )
+    cosine_contributions = GenomeCollection.matrix_trajectory_pair_contributions(
+        labels,
+        legacy_cosine_trajectory,
     )
-
-    full_analysis = analyze_multiscale_dataset(
-        collection=full_collection,
-        labels=FULL_GENOME_LABELS,
-        reference_label=REFERENCE_LABEL,
+    euclidean_partition = GenomeCollection.matrix_trajectory_deformation_partition(
+        euclidean_contributions,
+        PERIODIC_CONTROL_LABEL,
     )
-
-    biological_analysis = (
-        analyze_multiscale_dataset(
-            collection=biological_collection,
-            labels=BIOLOGICAL_GENOME_LABELS,
-            reference_label=REFERENCE_LABEL,
-        )
-    )
-
-    euclidean_pair_trajectory = (
-        full_collection.euclidean_pair_trajectory(
-            labels=FULL_GENOME_LABELS,
-            row_label=REFERENCE_LABEL,
-            column_label=COMPARISON_LABEL,
-            k_values=KMER_SENSITIVITY_LENGTHS,
-        )
-    )
-
-    cosine_pair_trajectory = (
-        full_collection.cosine_pair_trajectory(
-            labels=FULL_GENOME_LABELS,
-            row_label=REFERENCE_LABEL,
-            column_label=COMPARISON_LABEL,
-            k_values=KMER_SENSITIVITY_LENGTHS,
-        )
-    )
-
-    euclidean_pair_steps = (
-        GenomeCollection
-        .pair_trajectory_step_differences(
-            euclidean_pair_trajectory
-        )
-    )
-
-    cosine_pair_steps = (
-        GenomeCollection
-        .pair_trajectory_step_differences(
-            cosine_pair_trajectory
-        )
-    )
-
-    visualization_paths = save_visualizations(
-        euclidean_matrix=euclidean_matrix,
-        cosine_matrix=cosine_matrix,
-        full_analysis=full_analysis,
-        euclidean_pair_trajectory=(
-            euclidean_pair_trajectory
-        ),
-        cosine_pair_trajectory=(
-            cosine_pair_trajectory
-        ),
-    )
-
-    print_report_title(
-        "Genome Embeddings Analysis Report",
-        (
-            f"Reference: {REFERENCE_LABEL} | "
-            f"k-mer scales: "
-            f"{KMER_SENSITIVITY_LENGTHS}"
-        ),
-    )
-
-    print_section("1. Dataset")
-    print_key_value(
-        "Full dataset",
-        f"{len(full_collection.genomes)} genomes",
-    )
-    print_key_value(
-        "Biological-only dataset",
-        (
-            f"{len(biological_collection.genomes)} "
-            "genomes"
-        ),
-    )
-    print_key_value(
-        "Synthetic control",
+    cosine_partition = GenomeCollection.matrix_trajectory_deformation_partition(
+        cosine_contributions,
         PERIODIC_CONTROL_LABEL,
     )
 
-    print_subsection("Reference sequence")
-    print_genome_summary(reference_genome)
+    legacy_euclidean_rankings = GenomeCollection.matrix_ranking_trajectory(
+        legacy_euclidean_matrices,
+        REFERENCE_LABEL,
+    )
+    legacy_cosine_rankings = GenomeCollection.matrix_ranking_trajectory(
+        legacy_cosine_matrices,
+        REFERENCE_LABEL,
+    )
+    js_rankings = distribution.ranking_trajectory(
+        labels,
+        REFERENCE_LABEL,
+        KMER_SENSITIVITY_LENGTHS,
+    )
+    legacy_euclidean_stability = GenomeCollection.ranking_trajectory_stability(
+        legacy_euclidean_rankings
+    )
+    legacy_cosine_stability = GenomeCollection.ranking_trajectory_stability(
+        legacy_cosine_rankings
+    )
+    js_stability = GenomeCollection.ranking_trajectory_stability(js_rankings)
 
-    print_section(
-        f"2. Single-scale analysis (k={DEFAULT_KMER_LENGTH})"
+    legacy_pair_euclidean = legacy.euclidean_pair_trajectory(
+        labels,
+        REFERENCE_LABEL,
+        COMPARISON_LABEL,
+        KMER_SENSITIVITY_LENGTHS,
+    )
+    legacy_pair_cosine = legacy.cosine_pair_trajectory(
+        labels,
+        REFERENCE_LABEL,
+        COMPARISON_LABEL,
+        KMER_SENSITIVITY_LENGTHS,
+    )
+    js_pair = distribution.pair_trajectory(
+        labels,
+        REFERENCE_LABEL,
+        COMPARISON_LABEL,
+        KMER_SENSITIVITY_LENGTHS,
     )
 
-    print_subsection("Reference descriptor")
-    print_descriptor(reference_descriptor)
-
-    print_subsection(
-        f"Top {DEFAULT_KMER_LIMIT} reference k-mers"
-    )
-    print_kmer_frequencies(
-        reference_genome,
-        k=DEFAULT_KMER_LENGTH,
-        limit=DEFAULT_KMER_LIMIT,
-    )
-
-    print_subsection(
-        f"{REFERENCE_LABEL} vs {COMPARISON_LABEL}"
-    )
-    print_genome_comparison(comparison)
-
-    print_subsection(
-        f"Euclidean ranking from {REFERENCE_LABEL}"
-    )
-    print_ranking(
-        euclidean_matrix.rank_by_label(
-            label=REFERENCE_LABEL,
-        )
+    output_paths = save_visualizations(
+        legacy_euclidean=legacy_euclidean,
+        legacy_cosine=legacy_cosine,
+        descriptor_v2_euclidean=descriptor_v2_euclidean,
+        embedding_v2_euclidean=embedding_v2_euclidean,
+        jensen_shannon=jensen_shannon,
+        legacy_euclidean_trajectory=legacy_euclidean_trajectory,
+        legacy_cosine_trajectory=legacy_cosine_trajectory,
+        jensen_shannon_trajectory=js_trajectory,
+        legacy_pair_euclidean=legacy_pair_euclidean,
+        legacy_pair_cosine=legacy_pair_cosine,
+        jensen_shannon_pair=js_pair,
+        legacy_euclidean_stability=legacy_euclidean_stability,
+        legacy_cosine_stability=legacy_cosine_stability,
+        jensen_shannon_stability=js_stability,
     )
 
-    print_subsection(
-        f"Cosine ranking from {REFERENCE_LABEL}"
-    )
-    print_ranking(
-        cosine_matrix.rank_by_label(
-            label=REFERENCE_LABEL,
-        )
-    )
-
-    print_subsection("Euclidean distance matrix")
-    print_genome_matrix(euclidean_matrix)
-
-    print_subsection("Cosine similarity matrix")
-    print_genome_matrix(cosine_matrix)
-
-    print_section("3. Multiscale geometry")
-    print_subsection("Trajectory dimensions")
-    print_dataset_dimensions(
-        full_analysis=full_analysis,
-        biological_analysis=(
-            biological_analysis
+    report_title(
+        "Genome Embeddings Analysis Report",
+        (
+            f"Reference: {REFERENCE_LABEL} | comparison: {COMPARISON_LABEL} | "
+            f"k-mer scales: {KMER_SENSITIVITY_LENGTHS}"
         ),
     )
 
-    print_subsection(
-        "Euclidean full vs biological-only step distances"
+    section(1, "Dataset")
+    key_value("Full dataset", f"{len(genomes)} sequences")
+    key_value("Biological-only dataset", f"{len(biological_genomes)} sequences")
+    key_value("Synthetic control", PERIODIC_CONTROL_LABEL)
+    subsection("Reference sequence")
+    print_genome_summary(reference)
+
+    section(2, f"Legacy descriptor baseline (k={DEFAULT_KMER_LENGTH})")
+    subsection("Reference descriptor")
+    print_legacy_descriptor(reference, DEFAULT_KMER_LENGTH)
+    subsection(f"Top {DEFAULT_KMER_LIMIT} reference k-mers by frequency")
+    print_top_kmers(reference, DEFAULT_KMER_LENGTH, DEFAULT_KMER_LIMIT)
+    subsection("Legacy Euclidean ranking")
+    print_ranking(legacy_euclidean, REFERENCE_LABEL)
+    subsection("Legacy cosine ranking")
+    print_ranking(legacy_cosine, REFERENCE_LABEL)
+
+    section(3, "Descriptor Foundation V2")
+    subsection("Reference finite-sample and dependency descriptors")
+    print_v2_descriptor(reference_v2)
+    subsection(f"{REFERENCE_LABEL} vs {COMPARISON_LABEL}")
+    print_pair_comparison(legacy, descriptor_v2, distribution, labels)
+    subsection("Descriptor V2 Euclidean ranking")
+    print_ranking(descriptor_v2_euclidean, REFERENCE_LABEL)
+    subsection("Multiscale embedding V2 Euclidean ranking")
+    print_ranking(embedding_v2_euclidean, REFERENCE_LABEL)
+
+    section(4, "K-mer distribution comparison")
+    subsection("Jensen-Shannon distance ranking")
+    print_ranking(jensen_shannon, REFERENCE_LABEL)
+    subsection("Jensen-Shannon pair trajectory")
+    print_trajectory(js_pair)
+    subsection("Jensen-Shannon matrix step distances")
+    print_step_distances(
+        GenomeCollection.matrix_trajectory_step_distances(js_trajectory)
     )
-    print_dataset_step_comparison(
-        full_distances=(
-            full_analysis
-            .euclidean_step_distances
+    subsection("Jensen-Shannon ranking trajectory")
+    print_ranking_trajectory(js_rankings)
+    subsection("Jensen-Shannon ranking stability")
+    print_ranking_stability(js_stability)
+
+    section(5, "Legacy multiscale geometry and control influence")
+    subsection("Euclidean full vs biological-only step distances")
+    print_step_comparison(full_euclidean_steps, biological_euclidean_steps)
+    subsection("Cosine full vs biological-only step distances")
+    print_step_comparison(full_cosine_steps, biological_cosine_steps)
+    subsection("Euclidean squared-deformation partition")
+    print_partition(euclidean_partition)
+    subsection("Cosine squared-deformation partition")
+    print_partition(cosine_partition)
+
+    section(6, "Selected pair trajectories")
+    subsection("Legacy Euclidean")
+    print_trajectory(legacy_pair_euclidean)
+    subsection("Legacy cosine")
+    print_trajectory(legacy_pair_cosine)
+    subsection("Jensen-Shannon")
+    print_trajectory(js_pair)
+
+    section(7, "Comparison matrices")
+    subsection("Legacy Euclidean distance matrix")
+    print_matrix(legacy_euclidean)
+    subsection("Descriptor V2 Euclidean distance matrix")
+    print_matrix(descriptor_v2_euclidean)
+    subsection("Multiscale embedding V2 distance matrix")
+    print_matrix(embedding_v2_euclidean)
+    subsection("Jensen-Shannon distance matrix")
+    print_matrix(jensen_shannon)
+
+    section(8, "Generated artifacts and dashboard")
+    for path in output_paths:
+        print(f"  - {path.relative_to(PROJECT_ROOT)}")
+    key_value("Scientific dashboard", "python app.py")
+
+    dashboard_analysis = analyze_records(
+        records,
+        DashboardConfig(
+            k_values=tuple(KMER_SENSITIVITY_LENGTHS),
+            selected_k=DEFAULT_KMER_LENGTH,
+            reference_label=REFERENCE_LABEL,
+            comparison_label=COMPARISON_LABEL,
         ),
-        biological_distances=(
-            biological_analysis
-            .euclidean_step_distances
-        ),
     )
-
-    print_subsection(
-        "Cosine full vs biological-only step distances"
-    )
-    print_dataset_step_comparison(
-        full_distances=(
-            full_analysis
-            .cosine_step_distances
-        ),
-        biological_distances=(
-            biological_analysis
-            .cosine_step_distances
-        ),
-    )
-
-    print_subsection(
-        "Euclidean squared-deformation partition"
-    )
-    print_deformation_partition(
-        full_analysis
-        .euclidean_deformation_partition
-    )
-
-    print_subsection(
-        "Cosine squared-deformation partition"
-    )
-    print_deformation_partition(
-        full_analysis
-        .cosine_deformation_partition
-    )
-
-    print_section("4. Ranking stability across k")
-    print_subsection("Euclidean ranking trajectory")
-    print_ranking_trajectory(
-        full_analysis
-        .euclidean_ranking_trajectory
-    )
-
-    print_subsection("Euclidean stability")
-    print_ranking_stability(
-        full_analysis
-        .euclidean_ranking_stability
-    )
-
-    print_subsection("Cosine ranking trajectory")
-    print_ranking_trajectory(
-        full_analysis
-        .cosine_ranking_trajectory
-    )
-
-    print_subsection("Cosine stability")
-    print_ranking_stability(
-        full_analysis
-        .cosine_ranking_stability
-    )
-
-    print_section("5. Selected pair trajectory")
-    print_subsection("Euclidean trajectory")
-    print_pair_trajectory(
-        euclidean_pair_trajectory
-    )
-
-    print_subsection("Euclidean step differences")
-    print_pair_step_differences(
-        euclidean_pair_steps
-    )
-
-    print_subsection("Cosine trajectory")
-    print_pair_trajectory(
-        cosine_pair_trajectory
-    )
-
-    print_subsection("Cosine step differences")
-    print_pair_step_differences(
-        cosine_pair_steps
-    )
-
-    print_section("6. Main deformation drivers")
-    print_subsection(
-        "Top Euclidean pair contributions"
-    )
-    print_top_pair_contributions(
-        full_analysis
-        .euclidean_pair_contributions
-    )
-
-    print_subsection(
-        "Top cosine pair contributions"
-    )
-    print_top_pair_contributions(
-        full_analysis
-        .cosine_pair_contributions
-    )
-
-    print_section("7. Generated artifacts")
-
-    for path in visualization_paths:
-        print(
-            f"  - {path.relative_to(PROJECT_ROOT)}"
-        )
-
-    print_subsection("Serialization summary")
-    print_key_value(
-        "Matrix metric",
-        euclidean_matrix.metric,
-        indent=2,
-    )
-    print_key_value(
-        "Matrix k-mer length",
-        euclidean_matrix.kmer_length,
-        indent=2,
-    )
-    print_key_value(
-        "JSON characters",
-        len(euclidean_matrix.to_json(indent=2)),
-        indent=2,
-    )
-    print_key_value(
-        "CSV rows",
-        len(
-            euclidean_matrix
-            .to_csv()
-            .splitlines()
-        ),
-        indent=2,
-    )
+    subsection("Serialization summary")
+    key_value("Dashboard JSON characters", len(dashboard_analysis.to_json()))
+    key_value("Summary CSV rows", len(dashboard_analysis.summary_csv().splitlines()))
 
     print()
     print("=" * REPORT_WIDTH)

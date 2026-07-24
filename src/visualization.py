@@ -7,7 +7,15 @@ from matplotlib.figure import Figure
 from src.genome import GenomeMatrix
 
 
-MetricName = Literal["euclidean", "cosine"]
+MetricName = Literal[
+    "euclidean",
+    "cosine",
+    "euclidean_v2",
+    "cosine_v2",
+    "embedding_v2_euclidean",
+    "embedding_v2_cosine",
+    "jensen_shannon",
+]
 
 
 def _metric_title(
@@ -16,6 +24,11 @@ def _metric_title(
     titles = {
         "euclidean": "Euclidean Distance",
         "cosine": "Cosine Similarity",
+        "euclidean_v2": "Descriptor V2 Euclidean Distance",
+        "cosine_v2": "Descriptor V2 Cosine Similarity",
+        "embedding_v2_euclidean": "Embedding V2 Euclidean Distance",
+        "embedding_v2_cosine": "Embedding V2 Cosine Similarity",
+        "jensen_shannon": "Jensen-Shannon Distance",
     }
 
     try:

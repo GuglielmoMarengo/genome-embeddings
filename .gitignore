@@ -23,3 +23,5 @@ Thumbs.db
 
 # Generated visualizations
 outputs/
+# NiceGUI and local dashboard state
+.nicegui/

@@ -18,6 +18,11 @@ NORMALIZED_FEATURE_NAMES = [
 SUPPORTED_MATRIX_METRICS = {
     "euclidean",
     "cosine",
+    "euclidean_v2",
+    "cosine_v2",
+    "embedding_v2_euclidean",
+    "embedding_v2_cosine",
+    "jensen_shannon",
 }
 
 
@@ -399,7 +404,11 @@ class GenomeMatrix:
             if candidate_index != reference_index
         ]
 
-        reverse = self.metric == "cosine"
+        reverse = self.metric in {
+            "cosine",
+            "cosine_v2",
+            "embedding_v2_cosine",
+        }
 
         return sorted(
             ranking,

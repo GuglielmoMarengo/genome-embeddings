@@ -255,3 +255,28 @@ def test_save_figure_returns_requested_path(
     )
 
     assert saved_path == output_path
+
+def test_plot_jensen_shannon_heatmap_uses_metric_title():
+    matrix = GenomeMatrix(
+        labels=["Genome A", "Genome B"],
+        values=[[0.0, 0.4], [0.4, 0.0]],
+        metric="jensen_shannon",
+        kmer_length=3,
+    )
+
+    figure = plot_matrix_heatmap(matrix, annotate=False)
+
+    assert figure.axes[0].get_title() == (
+        "Jensen-Shannon Distance Matrix (k=3)"
+    )
+
+
+def test_plot_jensen_shannon_pair_trajectory_uses_distance_label():
+    figure = plot_pair_trajectory(
+        trajectory={1: 0.1, 2: 0.2},
+        row_label="Genome A",
+        column_label="Genome B",
+        metric="jensen_shannon",
+    )
+
+    assert figure.axes[0].get_ylabel() == "Jensen-Shannon Distance"
