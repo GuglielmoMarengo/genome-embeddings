@@ -6,10 +6,12 @@ export function cn(...values: Array<string | false | null | undefined>): string 
   return values.filter(Boolean).join(' ')
 }
 
-interface ButtonProps extends HTMLMotionProps<'button'> {
+interface ButtonProps
+  extends Omit<HTMLMotionProps<'button'>, 'children'> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
   icon?: LucideIcon
   loading?: boolean
+  children?: ReactNode
 }
 
 export function Button({
