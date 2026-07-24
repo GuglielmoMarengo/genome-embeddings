@@ -98,3 +98,16 @@ def test_dashboard_analysis_exports_json_and_csv():
 
     assert '"jensen_shannon"' in analysis.to_json()
     assert analysis.summary_csv().splitlines()[0] == "metric,value"
+
+
+def test_dashboard_config_requires_two_scales():
+    with pytest.raises(
+        ValueError,
+        match=r"At least two k-mer lengths are required\.",
+    ):
+        DashboardConfig(
+            k_values=(3,),
+            selected_k=3,
+            reference_label="A",
+            comparison_label="B",
+        )

@@ -62,6 +62,8 @@ class DashboardConfig:
     def __post_init__(self) -> None:
         if not self.k_values:
             raise ValueError("k-mer lengths cannot be empty.")
+        if len(self.k_values) < 2:
+            raise ValueError("At least two k-mer lengths are required.")
         if len(self.k_values) != len(set(self.k_values)):
             raise ValueError("k-mer lengths must be unique.")
         if self.selected_k not in self.k_values:
@@ -275,8 +277,15 @@ def analyze_records(
                 "finite_sample_entropy": (
                     descriptor.kmer.finite_sample_normalized_kmer_entropy
                 ),
+                "kmer_window_count": descriptor.kmer.window_count,
+                "possible_kmer_count": descriptor.kmer.possible_kmer_count,
+                "observable_kmer_count": descriptor.kmer.observable_kmer_count,
+                "distinct_kmer_count": descriptor.kmer.distinct_kmer_count,
                 "effective_kmer_count": (
                     descriptor.kmer.effective_kmer_count
+                ),
+                "dinucleotide_odds_ratios": (
+                    descriptor.dinucleotide_odds_ratios.copy()
                 ),
                 "theoretical_coverage": (
                     descriptor.kmer.theoretical_space_coverage

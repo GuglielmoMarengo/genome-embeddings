@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/github/license/GuglielmoMarengo/genome-embeddings)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/GuglielmoMarengo/genome-embeddings)](https://github.com/GuglielmoMarengo/genome-embeddings/commits/main)
 [![Status](https://img.shields.io/badge/Status-In%20Development-orange)](https://github.com/GuglielmoMarengo/genome-embeddings)
-[![Tests](https://img.shields.io/badge/Tests-196%20passing-brightgreen)](tests)
+[![Tests](https://img.shields.io/badge/Tests-207%20passing-brightgreen)](tests)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-blue)](SECURITY.md)
 [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen)](CONTRIBUTING.md)
 
@@ -29,7 +29,7 @@ The current implementation supports:
 * Descriptor Foundation V2 with finite-sample, dependency and sparsity diagnostics;
 * interpretable multiscale embeddings with global features represented once;
 * full k-mer probability vectors and Jensen–Shannon distribution comparison;
-* a professional NiceGUI scientific dashboard with FASTA upload and exports;
+* a FastAPI scientific backend and professional React/TypeScript dashboard with FASTA upload, animated UX and reusable exports;
 * graphical analysis through heatmaps, distributions and trajectory plots;
 * structured security, contribution, issue-reporting and pull-request workflows.
 
@@ -162,10 +162,15 @@ The project follows these principles:
 
 ### Visualization and dashboard
 
-* NiceGUI browser-based scientific dashboard
-* Multi-file single-record FASTA upload
+* FastAPI REST backend with OpenAPI documentation
+* React and TypeScript single-page scientific dashboard
+* Vite development environment and production build
+* Tailwind CSS design system and responsive layout
+* Motion-powered page, panel and micro-interactions
+* Persistent light and dark themes
+* Multi-file single-record FASTA drag-and-drop
 * Configurable k-mer scales, reference and comparison sequences
-* Interactive Plotly heatmaps and trajectories
+* Interactive Plotly heatmaps, trajectories and fullscreen charts
 * In-memory JSON and CSV export
 * Euclidean distance heatmaps
 * Cosine similarity heatmaps
@@ -217,10 +222,18 @@ Activate it on Linux or macOS:
 source .venv/bin/activate
 ```
 
-Install the dependencies:
+Install the Python dependencies:
 
 ```bash
 python -m pip install -r requirements.txt
+```
+
+Install the frontend dependencies:
+
+```bash
+cd frontend
+npm install
+cd ..
 ```
 
 Run the command-line demonstration:
@@ -229,42 +242,69 @@ Run the command-line demonstration:
 python main.py
 ```
 
-Run the scientific dashboard:
+Run the API and frontend development servers together:
 
 ```bash
+python dev.py
+```
+
+The React application is available at `http://127.0.0.1:5173`; Vite proxies `/api` requests to FastAPI at `http://127.0.0.1:8000`.
+
+Build and run the single-origin production application:
+
+```bash
+cd frontend
+npm run build
+cd ..
 python app.py
 ```
 
-NiceGUI starts a local web application and opens it in the browser. Uploaded FASTA content is processed in memory; uploaded filenames are sanitized and are not used as filesystem paths.
+FastAPI then serves both the API and the generated `frontend/dist` application from `http://127.0.0.1:8000`.
 
-Run the test suite:
+Run the Python test suite:
 
 ```bash
 python -m pytest
 ```
 
-For detailed output:
+Check and build the frontend:
 
 ```bash
-python -m pytest -v
+cd frontend
+npm run typecheck
+npm run build
 ```
 
-The current test suite contains **196 passing tests** across legacy descriptors, Descriptor Foundation V2, Jensen–Shannon distribution analysis, the application-facing dashboard workflow, dashboard plotting helpers and visualization utilities.
+The current Python test suite contains **207 passing tests** across legacy descriptors, Descriptor Foundation V2, Jensen–Shannon distribution analysis, FastAPI endpoints, frontend integration contracts and visualization utilities.
 
 ---
 
 ## Dependencies
 
-The project currently uses:
+Python:
 
 ```text
+fastapi[standard]>=0.128,<1
+httpx>=0.28,<1
 matplotlib>=3.10
-nicegui>=3.14,<4
-plotly>=6.5
-pytest>=8.3
+pytest>=9.0
 ```
 
-Matplotlib is isolated in the visualization module. The core mathematical classes do not depend directly on plotting code.
+Frontend:
+
+```text
+React 19
+TypeScript 7
+Vite 8
+Tailwind CSS 4
+Motion 12
+Plotly.js 3
+Lucide React
+```
+
+Matplotlib remains isolated in the generated static-visualization layer. The scientific core does not depend on FastAPI, React, plotting code or browser state.
+
+The former NiceGUI interface is retained as `legacy_app.py` and can be installed through `requirements-legacy-ui.txt` for regression or comparison purposes.
 
 ---
 
@@ -1481,35 +1521,59 @@ The destination directory is created automatically when needed.
 
 ---
 
-## Scientific Dashboard
+## Scientific Web Application
 
-Run:
+The current interface uses a separated architecture:
+
+```text
+React + TypeScript + Tailwind + Motion + Plotly.js
+                         │
+                         ▼
+                  FastAPI REST API
+                         │
+                         ▼
+                Python scientific core
+```
+
+Development mode:
 
 ```bash
+python dev.py
+```
+
+Production mode:
+
+```bash
+cd frontend
+npm run build
+cd ..
 python app.py
 ```
 
-The NiceGUI dashboard provides:
+The application provides:
 
-* demonstration-dataset loading;
-* multiple single-record FASTA uploads;
-* sanitized upload names and in-memory processing;
-* configurable `k` values from the interface;
-* reference and comparison selection;
+* an animated scientific landing and overview workspace;
+* collapsible desktop navigation and a mobile drawer;
+* persistent light and dark themes stored locally in the browser;
+* responsive layouts from mobile through large scientific displays;
+* drag-and-drop single-record FASTA upload with backend validation;
+* an off-canvas guided analysis workflow;
+* configurable `k` values, selected scale, reference and comparison sequences;
 * legacy, Descriptor V2, multiscale-embedding and Jensen–Shannon summaries;
-* interactive Plotly heatmaps;
-* pair trajectories and Jensen–Shannon ranking stability;
-* finite-sample descriptor tables;
-* JSON and CSV downloads generated in memory;
-* responsive cards, tabs and dark-mode support.
+* interactive Plotly heatmaps with zoom, image export and fullscreen display;
+* entropy, coverage, effective-k-mer and dinucleotide dependency charts;
+* pair trajectories, matrix-step distances and ranking stability;
+* searchable dataset tables and sequence previews;
+* JSON and CSV downloads generated without persistent server-side state;
+* skeletons, loading stages, error states, notifications and reduced-motion support.
 
-The application-facing analytical workflow is isolated in:
+The application-facing scientific workflow remains isolated in `src/dashboard.py`. The HTTP layer lives under `backend/`; the presentation layer lives under `frontend/`. Neither layer changes the mathematical definitions implemented by the core modules.
+
+API documentation is generated automatically at:
 
 ```text
-src/dashboard.py
+http://127.0.0.1:8000/docs
 ```
-
-This module has no NiceGUI dependency and is covered by automated tests. `app.py` is the presentation layer.
 
 The dashboard currently accepts one FASTA record per uploaded file. Multi-record genome assemblies remain a future platform feature.
 
@@ -2029,12 +2093,19 @@ GenomeCollection
                        dashboard.py
                        visualization.py
                                │
-                               ├── plot_matrix_heatmap()
-                               ├── plot_pair_trajectory()
-                               ├── plot_matrix_distribution()
-                               ├── plot_trajectory_distributions()
-                               ├── plot_ranking_stability()
-                               └── save_figure()
+                               ├── static Matplotlib artifacts
+                               ├── FastAPI JSON responses
+                               └── reusable exports
+                                       │
+                                       ▼
+                              backend/api.py
+                                       │
+                                       ▼
+                       React + TypeScript frontend
+                               ├── Tailwind design system
+                               ├── Motion interactions
+                               ├── Plotly.js charts
+                               └── persistent themes
 ```
 
 ---
@@ -2044,49 +2115,50 @@ GenomeCollection
 ```text
 genome-embeddings/
 ├── .github/
-│   ├── ISSUE_TEMPLATE/
-│   │   ├── bug_report.yml
-│   │   ├── feature_request.yml
-│   │   └── config.yml
-│   └── pull_request_template.md
+├── backend/
+│   ├── __init__.py
+│   ├── api.py
+│   ├── schemas.py
+│   └── service.py
 ├── data/
 │   ├── fluorescent_proteins/
-│   │   ├── aequorea_victoria_gfp_mrna.fasta
-│   │   ├── aequorea_victoria_gfp_cds.fasta
-│   │   ├── acropora_millepora_gfp_cds.fasta
-│   │   └── discosoma_fp583_cds.fasta
 │   └── controls/
-│       ├── biological/
-│       │   ├── staphylococcus_aureus_cata_cds.fasta
-│       │   └── saccharomyces_cerevisiae_tpi1_cds.fasta
-│       └── periodic_sequence.fasta
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── lib/
+│   │   ├── pages/
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   ├── main.tsx
+│   │   └── types.ts
+│   ├── index.html
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vite.config.ts
 ├── outputs/
 ├── src/
-│   ├── __init__.py
 │   ├── dashboard.py
 │   ├── descriptor_v2.py
 │   ├── genome.py
 │   ├── kmer_distribution.py
 │   └── visualization.py
 ├── tests/
-│   ├── data/
-│   │   └── example.fasta
+│   ├── test_api.py
 │   ├── test_app.py
 │   ├── test_dashboard.py
 │   ├── test_descriptor_v2.py
+│   ├── test_frontend_contract.py
 │   ├── test_genome.py
 │   ├── test_kmer_distribution.py
 │   ├── test_multiscale_analysis.py
 │   └── test_visualization.py
-├── .gitignore
-├── CODE_OF_CONDUCT.md
-├── CONTRIBUTING.md
-├── LICENSE
-├── README.md
-├── SECURITY.md
 ├── app.py
+├── dev.py
+├── legacy_app.py
 ├── main.py
-└── requirements.txt
+├── requirements.txt
+└── requirements-legacy-ui.txt
 ```
 
 `outputs/` is generated automatically and excluded from Git.
@@ -2353,7 +2425,11 @@ Technical and scientific disagreement is welcome when it remains respectful, evi
 * [ ] Ambiguous nucleotide support
 * [ ] RNA support
 * [x] Command-line demonstration report
-* [x] Local scientific dashboard
+* [x] FastAPI scientific API
+* [x] React and TypeScript scientific dashboard
+* [x] Responsive Tailwind design system
+* [x] Persistent light and dark themes
+* [x] Motion animations and reduced-motion support
 * [x] FASTA upload in the dashboard
 * [ ] Full command-line argument interface
 * [ ] Package distribution
@@ -2505,7 +2581,7 @@ Descriptor Foundation V2 and Jensen–Shannon comparison now provide a first imp
 * Histograms currently contain only 15 unique pairwise observations for the six-sequence dataset.
 * Box plots summarize small exploratory samples.
 * Visualization does not replace statistical testing.
-* The dashboard is a local single-user scientific interface, not a multi-user production platform.
+* The web application is currently a stateless local single-user research interface; authentication, persistent projects, job queues and multi-user deployment are not implemented.
 * No statistical significance testing is currently implemented.
 * No phylogenetic, structural or functional inference should be made from the current results.
 * Multiscale trajectories are exploratory representations, not validated biological signatures.
