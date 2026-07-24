@@ -704,6 +704,118 @@ class GenomeCollection:
 
         return contributions
 
+    @staticmethod
+    def matrix_trajectory_deformation_partition(
+        contributions: dict[
+            tuple[int, int],
+            list[dict[str, str | float]],
+        ],
+        selected_label: str,
+    ) -> dict[
+        tuple[int, int],
+        dict[str, float | int],
+    ]:
+        Genome.validate_string(
+            "Selected label",
+            selected_label,
+        )
+
+        if not contributions:
+            raise ValueError(
+                "Matrix trajectory contributions "
+                "cannot be empty."
+            )
+
+        partitions: dict[
+            tuple[int, int],
+            dict[str, float | int],
+        ] = {}
+
+        for transition, rows in contributions.items():
+            if not rows:
+                raise ValueError(
+                    "Matrix trajectory contribution "
+                    "rows cannot be empty."
+                )
+
+            total_squared_deformation = 0.0
+            selected_squared_deformation = 0.0
+            selected_pair_count = 0
+
+            for row in rows:
+                difference = float(row["difference"])
+                squared_difference = difference ** 2
+
+                total_squared_deformation += (
+                    squared_difference
+                )
+
+                if (
+                    row["row_label"] == selected_label
+                    or row["column_label"]
+                    == selected_label
+                ):
+                    selected_squared_deformation += (
+                        squared_difference
+                    )
+                    selected_pair_count += 1
+
+            if selected_pair_count == 0:
+                raise ValueError(
+                    "Selected label is not present in "
+                    "the contribution rows."
+                )
+
+            remaining_squared_deformation = (
+                total_squared_deformation
+                - selected_squared_deformation
+            )
+
+            selected_share = (
+                selected_squared_deformation
+                / total_squared_deformation
+                if total_squared_deformation != 0
+                else 0.0
+            )
+
+            remaining_share = (
+                remaining_squared_deformation
+                / total_squared_deformation
+                if total_squared_deformation != 0
+                else 0.0
+            )
+
+            partitions[transition] = {
+                "total_squared_deformation": (
+                    total_squared_deformation
+                ),
+                "selected_squared_deformation": (
+                    selected_squared_deformation
+                ),
+                "remaining_squared_deformation": (
+                    remaining_squared_deformation
+                ),
+                "selected_share": selected_share,
+                "remaining_share": remaining_share,
+                "total_distance": math.sqrt(
+                    total_squared_deformation
+                ),
+                "selected_distance": math.sqrt(
+                    selected_squared_deformation
+                ),
+                "remaining_distance": math.sqrt(
+                    remaining_squared_deformation
+                ),
+                "selected_pair_count": (
+                    selected_pair_count
+                ),
+                "remaining_pair_count": (
+                    len(rows) - selected_pair_count
+                ),
+            }
+
+        return partitions
+
     def euclidean_distance_matrix(
         self,
         labels: list[str],
@@ -810,6 +922,27 @@ class GenomeCollection:
             trajectory=trajectory,
         )
 
+    def euclidean_matrix_deformation_partition(
+        self,
+        labels: list[str],
+        k_values: list[int],
+        selected_label: str,
+    ) -> dict[
+        tuple[int, int],
+        dict[str, float | int],
+    ]:
+        contributions = (
+            self.euclidean_matrix_pair_contributions(
+                labels=labels,
+                k_values=k_values,
+            )
+        )
+
+        return self.matrix_trajectory_deformation_partition(
+            contributions=contributions,
+            selected_label=selected_label,
+        )
+
     def cosine_similarity_matrix(
         self,
         labels: list[str],
@@ -914,6 +1047,27 @@ class GenomeCollection:
         return self.matrix_trajectory_pair_contributions(
             labels=labels,
             trajectory=trajectory,
+        )
+
+    def cosine_matrix_deformation_partition(
+        self,
+        labels: list[str],
+        k_values: list[int],
+        selected_label: str,
+    ) -> dict[
+        tuple[int, int],
+        dict[str, float | int],
+    ]:
+        contributions = (
+            self.cosine_matrix_pair_contributions(
+                labels=labels,
+                k_values=k_values,
+            )
+        )
+
+        return self.matrix_trajectory_deformation_partition(
+            contributions=contributions,
+            selected_label=selected_label,
         )
 
     @staticmethod

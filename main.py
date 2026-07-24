@@ -97,6 +97,7 @@ KMER_SENSITIVITY_LENGTHS = [
     2,
     3,
     4,
+    5,
 ]
 
 REFERENCE_LABEL = "Aequorea GFP"
@@ -135,6 +136,16 @@ class DatasetMultiscaleAnalysis:
     cosine_pair_contributions: dict[
         tuple[int, int],
         list[dict[str, str | float]],
+    ]
+
+    euclidean_deformation_partition: dict[
+        tuple[int, int],
+        dict[str, float | int],
+    ]
+
+    cosine_deformation_partition: dict[
+        tuple[int, int],
+        dict[str, float | int],
     ]
 
 
@@ -546,56 +557,32 @@ def print_dataset_step_comparison(
             f"{control_share * 100:.2f}%"
         )
 
-def print_control_deformation_share(
-    contributions: dict[
+def print_deformation_partition(
+    partitions: dict[
         tuple[int, int],
-        list[dict[str, str | float]],
+        dict[str, float | int],
     ],
-    control_label: str,
+    selected_label: str,
     metric_name: str,
 ) -> None:
     print(
-        f"\n{metric_name} Periodic-Control "
-        "Squared Deformation Share:"
+        f"\n{metric_name} {selected_label} "
+        "Squared Deformation Partition:"
     )
 
-    for (
-        first_k,
-        second_k,
-    ), rows in contributions.items():
-        total_squared_deformation = sum(
-            float(row["difference"]) ** 2
-            for row in rows
-        )
-
-        control_squared_deformation = sum(
-            float(row["difference"]) ** 2
-            for row in rows
-            if (
-                row["row_label"]
-                == control_label
-                or row["column_label"]
-                == control_label
-            )
-        )
-
-        control_share = (
-            control_squared_deformation
-            / total_squared_deformation
-            if total_squared_deformation != 0
-            else 0.0
-        )
-
-        biological_share = (
-            1.0
-            - control_share
-        )
-
+    for (first_k, second_k), partition in (
+        partitions.items()
+    ):
         print(
             f"k={first_k} -> k={second_k}: "
-            f"control={control_share * 100:.2f}%, "
-            f"biological-only="
-            f"{biological_share * 100:.2f}%"
+            f"selected="
+            f"{float(partition['selected_share']) * 100:.2f}%, "
+            f"remaining="
+            f"{float(partition['remaining_share']) * 100:.2f}%, "
+            f"selected pairs="
+            f"{partition['selected_pair_count']}, "
+            f"remaining pairs="
+            f"{partition['remaining_pair_count']}"
         )
 
 
@@ -676,6 +663,30 @@ def analyze_multiscale_dataset(
         )
     )
 
+    euclidean_deformation_partition = (
+        collection
+        .matrix_trajectory_deformation_partition(
+            contributions=(
+                euclidean_pair_contributions
+            ),
+            selected_label=PERIODIC_CONTROL_LABEL,
+        )
+        if PERIODIC_CONTROL_LABEL in labels
+        else {}
+    )
+
+    cosine_deformation_partition = (
+        collection
+        .matrix_trajectory_deformation_partition(
+            contributions=(
+                cosine_pair_contributions
+            ),
+            selected_label=PERIODIC_CONTROL_LABEL,
+        )
+        if PERIODIC_CONTROL_LABEL in labels
+        else {}
+    )
+
     return DatasetMultiscaleAnalysis(
         labels=labels.copy(),
         euclidean_trajectory=(
@@ -695,6 +706,12 @@ def analyze_multiscale_dataset(
         ),
         cosine_pair_contributions=(
             cosine_pair_contributions
+        ),
+        euclidean_deformation_partition=(
+            euclidean_deformation_partition
+        ),
+        cosine_deformation_partition=(
+            cosine_deformation_partition
         ),
     )
 
@@ -1000,21 +1017,21 @@ def main() -> None:
         metric_name="Cosine",
     )
 
-    print_control_deformation_share(
-        contributions=(
+    print_deformation_partition(
+        partitions=(
             full_analysis
-            .euclidean_pair_contributions
+            .euclidean_deformation_partition
         ),
-        control_label=PERIODIC_CONTROL_LABEL,
+        selected_label=PERIODIC_CONTROL_LABEL,
         metric_name="Euclidean",
     )
 
-    print_control_deformation_share(
-        contributions=(
+    print_deformation_partition(
+        partitions=(
             full_analysis
-            .cosine_pair_contributions
+            .cosine_deformation_partition
         ),
-        control_label=PERIODIC_CONTROL_LABEL,
+        selected_label=PERIODIC_CONTROL_LABEL,
         metric_name="Cosine",
     )
 

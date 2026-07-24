@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/github/license/GuglielmoMarengo/genome-embeddings)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/GuglielmoMarengo/genome-embeddings)](https://github.com/GuglielmoMarengo/genome-embeddings/commits/main)
 [![Status](https://img.shields.io/badge/Status-In%20Development-orange)](https://github.com/GuglielmoMarengo/genome-embeddings)
-[![Tests](https://img.shields.io/badge/Tests-140%20passing-brightgreen)](tests)
+[![Tests](https://img.shields.io/badge/Tests-149%20passing-brightgreen)](tests)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-blue)](SECURITY.md)
 [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen)](CONTRIBUTING.md)
 
@@ -135,7 +135,9 @@ The project follows these principles:
 * Pair contributions to matrix deformation
 * Full-dataset versus biological-only trajectory comparison
 * Relative step-distance reduction after control removal
-* Squared-deformation shares for control-associated and biological-only pairs
+* Generic label-based squared-deformation partitioning
+* Squared-deformation shares for selected-label and remaining pairs
+* Exact reconstruction of remaining-subset step distances
 * Euclidean and cosine sensitivity analysis across `k`
 
 ### Visualization
@@ -213,7 +215,7 @@ For detailed output:
 python -m pytest -v
 ```
 
-The current test suite contains **140 passing tests**.
+The current test suite contains **149 passing tests**.
 
 ---
 
@@ -765,11 +767,13 @@ Different values of `k` capture different sequence scales:
 | `1`  | Nucleotide composition                        |
 | `2`  | Short-range nucleotide dependencies           |
 | `3`  | Triplet-scale organization                    |
-| `4+` | Increasingly specific local sequence patterns |
+| `4`  | Increasingly specific local sequence patterns     |
+| `5`  | Higher local specificity with increased sparsity  |
+| `6+` | Experimental high-sparsity regime                 |
 
 Triplet k-mers are not automatically equivalent to codons because the current implementation uses a sliding window and does not enforce a biological reading frame.
 
-Higher values of `k` increase sparsity, computational cost and sensitivity to sequence length.
+Higher values of `k` increase sparsity, computational cost and sensitivity to sequence length. The standard demonstration therefore uses `k = 1` through `k = 5`. Values from `k = 6` upward are currently treated as an experimental high-sparsity regime rather than part of the default analysis.
 
 ---
 
@@ -782,7 +786,7 @@ A `GenomeCollection` can generate one matrix for every requested k-mer length.
 ```python
 matrices = collection.euclidean_distance_matrices(
     labels=labels,
-    k_values=[1, 2, 3, 4],
+    k_values=[1, 2, 3, 4, 5],
 )
 ```
 
@@ -791,7 +795,7 @@ matrices = collection.euclidean_distance_matrices(
 ```python
 matrices = collection.cosine_similarity_matrices(
     labels=labels,
-    k_values=[1, 2, 3, 4],
+    k_values=[1, 2, 3, 4, 5],
 )
 ```
 
@@ -803,6 +807,7 @@ The result is an ordered mapping:
     2: GenomeMatrix(...),
     3: GenomeMatrix(...),
     4: GenomeMatrix(...),
+    5: GenomeMatrix(...),
 }
 ```
 
@@ -825,7 +830,7 @@ Repeating this process for several values of `k` produces a trajectory in matrix
 ```python
 trajectory = collection.euclidean_matrix_trajectory(
     labels=labels,
-    k_values=[1, 2, 3, 4],
+    k_values=[1, 2, 3, 4, 5],
 )
 ```
 
@@ -837,6 +842,7 @@ Example structure:
     2: [0.12, 0.25, 0.28],
     3: [0.15, 0.27, 0.24],
     4: [0.18, 0.31, 0.22],
+    5: [...],
 }
 ```
 
@@ -845,7 +851,7 @@ Cosine trajectories are generated with:
 ```python
 trajectory = collection.cosine_matrix_trajectory(
     labels=labels,
-    k_values=[1, 2, 3, 4],
+    k_values=[1, 2, 3, 4, 5],
 )
 ```
 
@@ -864,7 +870,7 @@ trajectory = collection.euclidean_pair_trajectory(
     labels=labels,
     row_label="Genome A",
     column_label="Genome B",
-    k_values=[1, 2, 3, 4],
+    k_values=[1, 2, 3, 4, 5],
 )
 ```
 
@@ -875,7 +881,7 @@ trajectory = collection.cosine_pair_trajectory(
     labels=labels,
     row_label="Genome A",
     column_label="Genome B",
-    k_values=[1, 2, 3, 4],
+    k_values=[1, 2, 3, 4, 5],
 )
 ```
 
@@ -937,14 +943,14 @@ collection.euclidean_pair_trajectory_step_differences(
     labels=labels,
     row_label="Genome A",
     column_label="Genome B",
-    k_values=[1, 2, 3, 4],
+    k_values=[1, 2, 3, 4, 5],
 )
 
 collection.cosine_pair_trajectory_step_differences(
     labels=labels,
     row_label="Genome A",
     column_label="Genome B",
-    k_values=[1, 2, 3, 4],
+    k_values=[1, 2, 3, 4, 5],
 )
 ```
 
@@ -972,12 +978,12 @@ Metric-specific methods can calculate these values directly from a collection:
 ```python
 collection.euclidean_matrix_trajectory_step_distances(
     labels=labels,
-    k_values=[1, 2, 3, 4],
+    k_values=[1, 2, 3, 4, 5],
 )
 
 collection.cosine_matrix_trajectory_step_distances(
     labels=labels,
-    k_values=[1, 2, 3, 4],
+    k_values=[1, 2, 3, 4, 5],
 )
 ```
 
@@ -1011,14 +1017,69 @@ Convenience methods are available for both metrics:
 ```python
 collection.euclidean_matrix_pair_contributions(
     labels=labels,
-    k_values=[1, 2, 3, 4],
+    k_values=[1, 2, 3, 4, 5],
 )
 
 collection.cosine_matrix_pair_contributions(
     labels=labels,
-    k_values=[1, 2, 3, 4],
+    k_values=[1, 2, 3, 4, 5],
 )
 ```
+
+### Squared-deformation partitioning
+
+Pair contributions can be partitioned according to whether each pair contains a selected label:
+
+```python
+partition = (
+    GenomeCollection
+    .matrix_trajectory_deformation_partition(
+        contributions=contributions,
+        selected_label="Periodic control",
+    )
+)
+```
+
+For every trajectory transition, the result contains:
+
+```text
+total_squared_deformation
+selected_squared_deformation
+remaining_squared_deformation
+selected_share
+remaining_share
+total_distance
+selected_distance
+remaining_distance
+selected_pair_count
+remaining_pair_count
+```
+
+The decomposition is exactly additive:
+
+```text
+total squared deformation
+= selected-label squared deformation
++ remaining squared deformation
+```
+
+Metric-specific wrappers calculate pair contributions and partitions directly:
+
+```python
+collection.euclidean_matrix_deformation_partition(
+    labels=labels,
+    k_values=[1, 2, 3, 4, 5],
+    selected_label="Periodic control",
+)
+
+collection.cosine_matrix_deformation_partition(
+    labels=labels,
+    k_values=[1, 2, 3, 4, 5],
+    selected_label="Periodic control",
+)
+```
+
+When the selected sequence is removed without changing the remaining sequences, `remaining_squared_deformation` equals the squared matrix-step distance of the corresponding subset. This identity is covered by automated tests.
 
 ---
 
@@ -1258,7 +1319,7 @@ because:
 6 × 5 / 2 = 15
 ```
 
-The first Euclidean coordinates across `k = 1, 2, 3, 4` are:
+The following recorded Euclidean coordinates cover `k = 1, 2, 3, 4`. The default demonstration now additionally evaluates `k = 5`:
 
 ```text
 k=1: [0.0635, 0.1088, 0.2011, ...]
@@ -1267,7 +1328,7 @@ k=3: [0.0656, 0.1102, 0.2074, ...]
 k=4: [0.0862, 0.1216, 0.2719, ...]
 ```
 
-The first cosine coordinates are:
+The following recorded cosine coordinates cover `k = 1, 2, 3, 4`. The default demonstration now additionally evaluates `k = 5`:
 
 ```text
 k=1: [0.9996, 0.9989, 0.9951, ...]
@@ -1495,6 +1556,7 @@ KMER_SENSITIVITY_LENGTHS = [
     2,
     3,
     4,
+    5,
 ]
 ```
 
@@ -1542,7 +1604,10 @@ GenomeCollection
       ├── cosine_pair_trajectory()
       ├── pair_trajectory_step_differences()
       ├── matrix_trajectory_step_distances()
-      └── matrix_trajectory_pair_contributions()
+      ├── matrix_trajectory_pair_contributions()
+      ├── matrix_trajectory_deformation_partition()
+      ├── euclidean_matrix_deformation_partition()
+      └── cosine_matrix_deformation_partition()
                        │
                        ├── full-dataset analysis
                        ├── biological-only analysis
@@ -1643,6 +1708,9 @@ The current implementation validates:
 * inconsistent matrix-trajectory vector dimensions;
 * matrix-vector and label-pair mismatches;
 * duplicate or empty labels in contribution analysis;
+* empty deformation-contribution mappings;
+* empty contribution rows;
+* missing selected labels in deformation partitions;
 * empty visualization trajectories;
 * empty distribution vectors;
 * invalid histogram bins;
@@ -1660,6 +1728,8 @@ matplotlib.use("Agg")
 ```
 
 This allows figures to be created and saved during automated tests without opening graphical windows.
+
+The multiscale tests also verify additive deformation partitioning, wrapper consistency and exact reconstruction of subset step distances.
 
 The visualization tests verify:
 
@@ -1797,6 +1867,9 @@ Technical and scientific disagreement is welcome when it remains respectful, evi
 * [x] Full-dataset versus biological-only comparison
 * [x] Relative step-distance reduction analysis
 * [x] Synthetic-control squared-deformation partitioning
+* [x] Generic label-based deformation partition API
+* [x] Exact subset-distance reconstruction test
+* [x] Default k-mer sensitivity range through `k = 5`
 * [ ] Cross-scale stability metrics
 * [ ] Ranking stability analysis
 * [ ] Clustering stability analysis
@@ -1912,7 +1985,8 @@ This representation may support the identification of:
 * differences between distance metrics;
 * exploratory multiscale mutation signatures;
 * differences between full and biological-only dataset geometry;
-* the fraction of squared deformation associated with synthetic-control pairs.
+* the fraction of squared deformation associated with any selected-label pair set;
+* exact reconstruction of the remaining subset geometry after selected-label removal.
 
 ### Visual exploration
 
@@ -1987,6 +2061,8 @@ Important research topics include:
 * Full-versus-biological comparisons are currently demonstrated on one small dataset.
 * Relative step-distance reduction is comparative and is not an additive contribution measure.
 * Squared-deformation shares are exact for the current matrix coordinates but remain dataset-specific exploratory quantities.
+* The default `k = 1–5` range does not capture long genomic regions directly; it measures progressively more specific local sequence patterns.
+* Values above `k = 5` require explicit sparsity and sequence-length sensitivity analysis before routine interpretation.
 * Cosine similarity is highly compressed in the current descriptor space.
 * Histograms currently contain only 15 unique pairwise observations for the six-sequence dataset.
 * Box plots summarize small exploratory samples.

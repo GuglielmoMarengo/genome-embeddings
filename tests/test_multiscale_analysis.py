@@ -301,3 +301,245 @@ def test_cosine_matrix_contribution_wrapper_matches_generic_method(
             trajectory=trajectory,
         )
     )
+
+
+def test_deformation_partition_is_additive():
+    contributions = (
+        GenomeCollection.matrix_trajectory_pair_contributions(
+            labels=LABELS,
+            trajectory={
+                1: [0.10, 0.20, 0.30],
+                2: [0.15, 0.18, 0.40],
+            },
+        )
+    )
+
+    partition = (
+        GenomeCollection
+        .matrix_trajectory_deformation_partition(
+            contributions=contributions,
+            selected_label="Genome C",
+        )[(1, 2)]
+    )
+
+    assert partition[
+        "total_squared_deformation"
+    ] == pytest.approx(
+        partition["selected_squared_deformation"]
+        + partition["remaining_squared_deformation"]
+    )
+
+    assert partition["selected_share"] + partition[
+        "remaining_share"
+    ] == pytest.approx(1.0)
+
+
+def test_deformation_partition_reports_expected_values():
+    contributions = {
+        (1, 2): [
+            {
+                "row_label": "Genome A",
+                "column_label": "Genome B",
+                "difference": 3.0,
+                "absolute_difference": 3.0,
+            },
+            {
+                "row_label": "Genome A",
+                "column_label": "Genome C",
+                "difference": 4.0,
+                "absolute_difference": 4.0,
+            },
+            {
+                "row_label": "Genome B",
+                "column_label": "Genome C",
+                "difference": 12.0,
+                "absolute_difference": 12.0,
+            },
+        ]
+    }
+
+    partition = (
+        GenomeCollection
+        .matrix_trajectory_deformation_partition(
+            contributions=contributions,
+            selected_label="Genome C",
+        )[(1, 2)]
+    )
+
+    assert partition[
+        "total_squared_deformation"
+    ] == pytest.approx(169.0)
+    assert partition[
+        "selected_squared_deformation"
+    ] == pytest.approx(160.0)
+    assert partition[
+        "remaining_squared_deformation"
+    ] == pytest.approx(9.0)
+    assert partition["total_distance"] == pytest.approx(13.0)
+    assert partition["selected_distance"] == pytest.approx(
+        math.sqrt(160.0)
+    )
+    assert partition["remaining_distance"] == pytest.approx(3.0)
+    assert partition["selected_pair_count"] == 2
+    assert partition["remaining_pair_count"] == 1
+
+
+def test_deformation_partition_preserves_transition_order():
+    contributions = {
+        (3, 1): [
+            {
+                "row_label": "Genome A",
+                "column_label": "Genome B",
+                "difference": 1.0,
+                "absolute_difference": 1.0,
+            }
+        ],
+        (1, 2): [
+            {
+                "row_label": "Genome A",
+                "column_label": "Genome B",
+                "difference": 2.0,
+                "absolute_difference": 2.0,
+            }
+        ],
+    }
+
+    partitions = (
+        GenomeCollection
+        .matrix_trajectory_deformation_partition(
+            contributions=contributions,
+            selected_label="Genome A",
+        )
+    )
+
+    assert list(partitions) == [
+        (3, 1),
+        (1, 2),
+    ]
+
+
+def test_deformation_partition_rejects_empty_contributions():
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"Matrix trajectory contributions "
+            r"cannot be empty\."
+        ),
+    ):
+        GenomeCollection.matrix_trajectory_deformation_partition(
+            contributions={},
+            selected_label="Genome A",
+        )
+
+
+def test_deformation_partition_rejects_empty_rows():
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"Matrix trajectory contribution "
+            r"rows cannot be empty\."
+        ),
+    ):
+        GenomeCollection.matrix_trajectory_deformation_partition(
+            contributions={(1, 2): []},
+            selected_label="Genome A",
+        )
+
+
+def test_deformation_partition_rejects_unknown_label():
+    contributions = (
+        GenomeCollection.matrix_trajectory_pair_contributions(
+            labels=LABELS,
+            trajectory={
+                1: [0.10, 0.20, 0.30],
+                2: [0.15, 0.18, 0.40],
+            },
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"Selected label is not present in "
+            r"the contribution rows\."
+        ),
+    ):
+        GenomeCollection.matrix_trajectory_deformation_partition(
+            contributions=contributions,
+            selected_label="Unknown",
+        )
+
+
+def test_euclidean_deformation_partition_wrapper_matches_generic(
+    collection: GenomeCollection,
+):
+    contributions = collection.euclidean_matrix_pair_contributions(
+        labels=LABELS,
+        k_values=[1, 2, 3],
+    )
+
+    assert collection.euclidean_matrix_deformation_partition(
+        labels=LABELS,
+        k_values=[1, 2, 3],
+        selected_label="Genome C",
+    ) == collection.matrix_trajectory_deformation_partition(
+        contributions=contributions,
+        selected_label="Genome C",
+    )
+
+
+def test_remaining_deformation_matches_subset_step_distance():
+    full_collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+            Genome("GGGGTTTT"),
+        ]
+    )
+
+    subset_collection = GenomeCollection(
+        [
+            Genome("ACGTACGT"),
+            Genome("AAAACCCC"),
+        ]
+    )
+
+    full_partition = (
+        full_collection
+        .euclidean_matrix_deformation_partition(
+            labels=LABELS,
+            k_values=[1, 2, 3],
+            selected_label="Genome C",
+        )
+    )
+
+    subset_distances = (
+        subset_collection
+        .euclidean_matrix_trajectory_step_distances(
+            labels=["Genome A", "Genome B"],
+            k_values=[1, 2, 3],
+        )
+    )
+
+    for transition, subset_distance in subset_distances.items():
+        assert full_partition[transition][
+            "remaining_squared_deformation"
+        ] == pytest.approx(subset_distance ** 2)
+
+
+def test_cosine_deformation_partition_wrapper_matches_generic(
+    collection: GenomeCollection,
+):
+    contributions = collection.cosine_matrix_pair_contributions(
+        labels=LABELS,
+        k_values=[1, 2, 3],
+    )
+
+    assert collection.cosine_matrix_deformation_partition(
+        labels=LABELS,
+        k_values=[1, 2, 3],
+        selected_label="Genome C",
+    ) == collection.matrix_trajectory_deformation_partition(
+        contributions=contributions,
+        selected_label="Genome C",
+    )
